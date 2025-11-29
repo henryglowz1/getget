@@ -14,16 +14,341 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ajos: {
+        Row: {
+          contribution_amount: number
+          created_at: string
+          creator_id: string | null
+          current_cycle: number | null
+          cycle_type: string
+          description: string | null
+          id: string
+          max_members: number
+          name: string
+          start_date: string
+          status: string
+          updated_at: string
+          withdrawal_order: Json | null
+        }
+        Insert: {
+          contribution_amount: number
+          created_at?: string
+          creator_id?: string | null
+          current_cycle?: number | null
+          cycle_type: string
+          description?: string | null
+          id?: string
+          max_members?: number
+          name: string
+          start_date: string
+          status?: string
+          updated_at?: string
+          withdrawal_order?: Json | null
+        }
+        Update: {
+          contribution_amount?: number
+          created_at?: string
+          creator_id?: string | null
+          current_cycle?: number | null
+          cycle_type?: string
+          description?: string | null
+          id?: string
+          max_members?: number
+          name?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          withdrawal_order?: Json | null
+        }
+        Relationships: []
+      }
+      ledger: {
+        Row: {
+          ajo_id: string | null
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          membership_id: string | null
+          metadata: Json | null
+          provider_reference: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          ajo_id?: string | null
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          membership_id?: string | null
+          metadata?: Json | null
+          provider_reference?: string | null
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          ajo_id?: string | null
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          membership_id?: string | null
+          metadata?: Json | null
+          provider_reference?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_ajo_id_fkey"
+            columns: ["ajo_id"]
+            isOneToOne: false
+            referencedRelation: "ajos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      linked_banks: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_code: string
+          bank_name: string
+          created_at: string
+          id: string
+          is_default: boolean | null
+          recipient_code: string | null
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_code: string
+          bank_name: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          recipient_code?: string | null
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_code?: string
+          bank_name?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          recipient_code?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      memberships: {
+        Row: {
+          ajo_id: string
+          authorization_code: string | null
+          card_brand: string | null
+          card_last4: string | null
+          id: string
+          is_active: boolean | null
+          joined_at: string
+          next_debit_date: string | null
+          position: number
+          retry_count: number | null
+          user_id: string
+        }
+        Insert: {
+          ajo_id: string
+          authorization_code?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string
+          next_debit_date?: string | null
+          position: number
+          retry_count?: number | null
+          user_id: string
+        }
+        Update: {
+          ajo_id?: string
+          authorization_code?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string
+          next_debit_date?: string | null
+          position?: number
+          retry_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memberships_ajo_id_fkey"
+            columns: ["ajo_id"]
+            isOneToOne: false
+            referencedRelation: "ajos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      webhook_logs: {
+        Row: {
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean | null
+          received_at: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean | null
+          received_at?: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean | null
+          received_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +475,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
