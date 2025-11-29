@@ -12,52 +12,53 @@ import {
   Calendar
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const stats = [
-  {
-    label: "Wallet Balance",
-    value: "₦125,000",
-    change: "+₦25,000",
-    changeType: "positive",
-    icon: Wallet
-  },
-  {
-    label: "Total Contributed",
-    value: "₦450,000",
-    change: "+15%",
-    changeType: "positive",
-    icon: TrendingUp
-  },
-  {
-    label: "Active Groups",
-    value: "3",
-    change: "1 pending",
-    changeType: "neutral",
-    icon: Users
-  },
-  {
-    label: "Linked Cards",
-    value: "2",
-    change: "Active",
-    changeType: "positive",
-    icon: CreditCard
-  }
-];
-
-const recentTransactions = [
-  { id: 1, type: "debit", description: "Monthly Ajo - Friends Circle", amount: "₦10,000", date: "Today, 9:30 AM", status: "success" },
-  { id: 2, type: "credit", description: "Payout - Family Savings", amount: "₦60,000", date: "Yesterday", status: "success" },
-  { id: 3, type: "debit", description: "Weekly Ajo - Office Group", amount: "₦5,000", date: "Nov 27, 2024", status: "success" },
-  { id: 4, type: "debit", description: "Monthly Ajo - Friends Circle", amount: "₦10,000", date: "Nov 25, 2024", status: "failed" },
-];
-
-const activeGroups = [
-  { id: 1, name: "Friends Circle", members: 10, contribution: "₦10,000", cycle: "Monthly", nextPayout: "Dec 15, 2024", position: 3 },
-  { id: 2, name: "Family Savings", members: 5, contribution: "₦20,000", cycle: "Monthly", nextPayout: "Jan 1, 2025", position: 2 },
-  { id: 3, name: "Office Group", members: 8, contribution: "₦5,000", cycle: "Weekly", nextPayout: "Dec 2, 2024", position: 5 },
-];
+import { useProfile } from "@/hooks/useProfile";
+import { useWallet, formatNaira } from "@/hooks/useWallet";
 
 export default function Dashboard() {
+  const { data: profile } = useProfile();
+  const { data: wallet } = useWallet();
+
+  const firstName = profile?.full_name?.split(" ")[0] || "there";
+  const walletBalance = wallet?.balance || 0;
+
+  const stats: Array<{
+    label: string;
+    value: string;
+    change: string;
+    changeType: "positive" | "negative" | "neutral";
+    icon: typeof Wallet;
+  }> = [
+    {
+      label: "Wallet Balance",
+      value: formatNaira(walletBalance),
+      change: "Available",
+      changeType: "positive",
+      icon: Wallet
+    },
+    {
+      label: "Total Contributed",
+      value: "₦0",
+      change: "No contributions yet",
+      changeType: "neutral",
+      icon: TrendingUp
+    },
+    {
+      label: "Active Groups",
+      value: "0",
+      change: "Join a group",
+      changeType: "neutral",
+      icon: Users
+    },
+    {
+      label: "Linked Cards",
+      value: "0",
+      change: "Link a card",
+      changeType: "neutral",
+      icon: CreditCard
+    }
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
@@ -66,10 +67,10 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-foreground/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="relative">
             <h1 className="font-display text-2xl lg:text-3xl font-bold mb-2">
-              Welcome back, John! 👋
+              Welcome back, {firstName}! 👋
             </h1>
             <p className="text-primary-foreground/80 mb-4">
-              Your next contribution is scheduled for December 1st, 2024
+              Start by creating or joining an Ajo group
             </p>
             <Button variant="gold" asChild>
               <Link to="/dashboard/groups">
@@ -116,38 +117,10 @@ export default function Dashboard() {
                 </Link>
               </Button>
             </div>
-            <div className="divide-y divide-border/50">
-              {recentTransactions.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-4 p-4 lg:px-6 hover:bg-muted/50 transition-colors">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    tx.type === "credit" 
-                      ? "bg-success/10" 
-                      : tx.status === "failed" 
-                      ? "bg-destructive/10" 
-                      : "bg-muted"
-                  }`}>
-                    {tx.type === "credit" ? (
-                      <ArrowDownRight className="w-5 h-5 text-success" />
-                    ) : (
-                      <ArrowUpRight className={`w-5 h-5 ${tx.status === "failed" ? "text-destructive" : "text-muted-foreground"}`} />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
-                    <p className="text-xs text-muted-foreground">{tx.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${
-                      tx.type === "credit" ? "text-success" : "text-foreground"
-                    }`}>
-                      {tx.type === "credit" ? "+" : "-"}{tx.amount}
-                    </p>
-                    {tx.status === "failed" && (
-                      <p className="text-xs text-destructive">Failed</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="p-6 text-center text-muted-foreground">
+              <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">No transactions yet</p>
+              <p className="text-xs mt-1">Your contribution history will appear here</p>
             </div>
           </div>
 
@@ -162,35 +135,40 @@ export default function Dashboard() {
                 </Link>
               </Button>
             </div>
-            <div className="divide-y divide-border/50">
-              {activeGroups.map((group) => (
-                <Link 
-                  key={group.id} 
-                  to={`/dashboard/groups/${group.id}`}
-                  className="flex items-center gap-4 p-4 lg:px-6 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold">
-                    {group.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{group.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {group.members} members • {group.cycle}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-foreground">{group.contribution}</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      Position {group.position}
-                    </div>
-                  </div>
+            <div className="p-6 text-center text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">No active groups</p>
+              <p className="text-xs mt-1">Create or join an Ajo group to get started</p>
+              <Button variant="outline" size="sm" className="mt-4" asChild>
+                <Link to="/dashboard/groups">
+                  Browse Groups
                 </Link>
-              ))}
+              </Button>
             </div>
           </div>
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function History(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l4 2" />
+    </svg>
   );
 }
