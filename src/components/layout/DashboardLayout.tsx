@@ -14,6 +14,8 @@ import {
   ChevronDown
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 const sidebarLinks = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -28,6 +30,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
+  const { data: profile } = useProfile();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "User";
+  const displayEmail = profile?.email || user?.email || "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -109,19 +130,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* User Profile */}
           <div className="p-4 border-t border-border">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-              <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold">
-                JD
+              <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                {getInitials(displayName)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">John Doe</p>
-                <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+                <p className="text-sm font-medium truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
               </div>
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </div>
             <Button
               variant="ghost"
               className="w-full mt-2 justify-start text-muted-foreground hover:text-destructive"
-              onClick={() => navigate("/login")}
+              onClick={handleSignOut}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out

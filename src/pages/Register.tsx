@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Navbar } from "@/components/layout/Navbar";
 import { Wallet, Mail, Lock, User, Phone, ArrowRight, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Register() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -18,6 +20,12 @@ export default function Register() {
     password: "",
     confirmPassword: ""
   });
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -35,17 +43,41 @@ export default function Register() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate registration - replace with actual auth
-    setTimeout(() => {
+    const { error } = await signUp(
+      formData.email, 
+      formData.password, 
+      formData.name,
+      formData.phone
+    );
+    
+    if (error) {
       setIsLoading(false);
       toast({
-        title: "Account created!",
-        description: "Welcome to AjoConnect. Let's get you started.",
+        title: "Registration failed",
+        description: error.message.includes("already registered")
+          ? "This email is already registered. Please sign in instead."
+          : error.message,
+        variant: "destructive"
       });
-      navigate("/dashboard");
-    }, 1000);
+      return;
+    }
+
+    toast({
+      title: "Account created!",
+      description: "Welcome to AjoConnect. Let's get you started.",
+    });
+    navigate("/dashboard");
   };
 
   return (
@@ -116,7 +148,6 @@ export default function Register() {
                     className="pl-11"
                     value={formData.phone}
                     onChange={handleChange}
-                    required
                   />
                 </div>
               </div>
@@ -134,7 +165,7 @@ export default function Register() {
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    minLength={8}
+                    minLength={6}
                   />
                 </div>
               </div>
