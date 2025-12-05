@@ -15,6 +15,9 @@ import { useWallet, formatNaira } from "@/hooks/useWallet";
 import { FundWalletModal } from "@/components/wallet/FundWalletModal";
 import { WithdrawModal } from "@/components/wallet/WithdrawModal";
 import { usePaymentCallback } from "@/hooks/usePaymentCallback";
+import { LinkedBanksManager } from "@/components/wallet/LinkedBanksManager";
+import { AddBankModal } from "@/components/wallet/AddBankModal";
+import { useLinkedBanks } from "@/hooks/useLinkedBanks";
 
 const walletHistory = [
   { id: 1, type: "credit", description: "Payout - Family Savings", amount: "₦60,000", date: "Nov 28, 2024", balance: "₦125,000" },
@@ -28,8 +31,10 @@ export default function WalletPage() {
   const [activeTab, setActiveTab] = useState<"all" | "credits" | "debits">("all");
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [addBankModalOpen, setAddBankModalOpen] = useState(false);
   const { data: wallet, isLoading: walletLoading } = useWallet();
   const { isVerifying } = usePaymentCallback();
+  const { data: linkedBanks } = useLinkedBanks();
 
   const filteredHistory = walletHistory.filter(tx => {
     if (activeTab === "all") return true;
@@ -70,6 +75,7 @@ export default function WalletPage() {
               <Button 
                 variant="outline" 
                 className="bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => setAddBankModalOpen(true)}
               >
                 <Building2 className="w-4 h-4 mr-2" />
                 Add Bank
@@ -106,7 +112,7 @@ export default function WalletPage() {
               <Building2 className="w-5 h-5" />
               <span className="text-sm font-medium">Linked Banks</span>
             </div>
-            <p className="font-display text-xl font-bold text-foreground">2</p>
+            <p className="font-display text-xl font-bold text-foreground">{linkedBanks?.length ?? 0}</p>
           </div>
         </div>
 
@@ -159,10 +165,14 @@ export default function WalletPage() {
             ))}
           </div>
         </div>
+
+        {/* Linked Banks */}
+        <LinkedBanksManager />
       </div>
 
       <FundWalletModal open={fundModalOpen} onOpenChange={setFundModalOpen} />
       <WithdrawModal open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen} />
+      <AddBankModal open={addBankModalOpen} onOpenChange={setAddBankModalOpen} />
     </DashboardLayout>
   );
 }
