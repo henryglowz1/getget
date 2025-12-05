@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
 import { FundWalletModal } from "@/components/wallet/FundWalletModal";
+import { WithdrawModal } from "@/components/wallet/WithdrawModal";
 import { usePaymentCallback } from "@/hooks/usePaymentCallback";
 
 const walletHistory = [
@@ -26,6 +27,7 @@ const walletHistory = [
 export default function WalletPage() {
   const [activeTab, setActiveTab] = useState<"all" | "credits" | "debits">("all");
   const [fundModalOpen, setFundModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const { data: wallet, isLoading: walletLoading } = useWallet();
   const { isVerifying } = usePaymentCallback();
 
@@ -61,7 +63,7 @@ export default function WalletPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Fund Wallet
               </Button>
-              <Button variant="gold">
+              <Button variant="gold" onClick={() => setWithdrawModalOpen(true)}>
                 <Send className="w-4 h-4 mr-2" />
                 Withdraw
               </Button>
@@ -160,6 +162,7 @@ export default function WalletPage() {
       </div>
 
       <FundWalletModal open={fundModalOpen} onOpenChange={setFundModalOpen} />
+      <WithdrawModal open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen} />
     </DashboardLayout>
   );
 }
