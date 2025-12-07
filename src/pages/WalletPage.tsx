@@ -8,7 +8,9 @@ import {
   Building2,
   Plus,
   Send,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
@@ -21,8 +23,11 @@ import { useLinkedBanks } from "@/hooks/useLinkedBanks";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import { format } from "date-fns";
 
+const ITEMS_PER_PAGE = 5;
+
 export default function WalletPage() {
   const [activeTab, setActiveTab] = useState<"all" | "credits" | "debits">("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [addBankModalOpen, setAddBankModalOpen] = useState(false);
@@ -39,6 +44,19 @@ export default function WalletPage() {
       return tx.type === "debit";
     });
   }, [transactions, activeTab]);
+
+  // Reset to page 1 when tab changes
+  const handleTabChange = (tab: "all" | "credits" | "debits") => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
+  const paginatedHistory = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredHistory.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredHistory, currentPage]);
 
   const stats = useMemo(() => {
     if (!transactions) return { totalReceived: 0, totalWithdrawn: 0, thisMonth: 0 };
@@ -155,7 +173,7 @@ export default function WalletPage() {
               {(["all", "credits", "debits"] as const).map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleTabChange(tab)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === tab
                       ? "bg-primary text-primary-foreground"
@@ -179,7 +197,7 @@ export default function WalletPage() {
                 <p className="text-sm">No transactions yet</p>
               </div>
             ) : (
-              filteredHistory.slice(0, 10).map((tx) => (
+              paginatedHistory.map((tx) => (
                 <div key={tx.id} className="flex items-center gap-4 p-4 lg:px-6 hover:bg-muted/50 transition-colors">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     tx.type === "credit" ? "bg-success/10" : "bg-muted"
@@ -209,6 +227,36 @@ export default function WalletPage() {
               ))
             )}
           </div>
+
+          {/* Pagination */}
+          {!txLoading && filteredHistory.length > ITEMS_PER_PAGE && (
+            <div className="flex items-center justify-between p-4 border-t border-border/50">
+              <p className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} of {filteredHistory.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Linked Banks */}
