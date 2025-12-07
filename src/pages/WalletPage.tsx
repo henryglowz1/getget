@@ -10,7 +10,7 @@ import {
   Send,
   Loader2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
 import { FundWalletModal } from "@/components/wallet/FundWalletModal";
 import { WithdrawModal } from "@/components/wallet/WithdrawModal";
@@ -18,14 +18,8 @@ import { usePaymentCallback } from "@/hooks/usePaymentCallback";
 import { LinkedBanksManager } from "@/components/wallet/LinkedBanksManager";
 import { AddBankModal } from "@/components/wallet/AddBankModal";
 import { useLinkedBanks } from "@/hooks/useLinkedBanks";
-
-const walletHistory = [
-  { id: 1, type: "credit", description: "Payout - Family Savings", amount: "₦60,000", date: "Nov 28, 2024", balance: "₦125,000" },
-  { id: 2, type: "debit", description: "Withdrawal to GTBank", amount: "₦50,000", date: "Nov 25, 2024", balance: "₦65,000" },
-  { id: 3, type: "credit", description: "Payout - Friends Circle", amount: "₦100,000", date: "Nov 15, 2024", balance: "₦115,000" },
-  { id: 4, type: "debit", description: "Withdrawal to Access Bank", amount: "₦30,000", date: "Nov 10, 2024", balance: "₦15,000" },
-  { id: 5, type: "credit", description: "Payout - Office Group", amount: "₦40,000", date: "Nov 5, 2024", balance: "₦45,000" },
-];
+import { useWalletTransactions } from "@/hooks/useWalletTransactions";
+import { format } from "date-fns";
 
 export default function WalletPage() {
   const [activeTab, setActiveTab] = useState<"all" | "credits" | "debits">("all");
@@ -35,12 +29,43 @@ export default function WalletPage() {
   const { data: wallet, isLoading: walletLoading } = useWallet();
   const { isVerifying } = usePaymentCallback();
   const { data: linkedBanks } = useLinkedBanks();
+  const { data: transactions, isLoading: txLoading } = useWalletTransactions();
 
-  const filteredHistory = walletHistory.filter(tx => {
-    if (activeTab === "all") return true;
-    if (activeTab === "credits") return tx.type === "credit";
-    return tx.type === "debit";
-  });
+  const filteredHistory = useMemo(() => {
+    if (!transactions) return [];
+    return transactions.filter(tx => {
+      if (activeTab === "all") return true;
+      if (activeTab === "credits") return tx.type === "credit";
+      return tx.type === "debit";
+    });
+  }, [transactions, activeTab]);
+
+  const stats = useMemo(() => {
+    if (!transactions) return { totalReceived: 0, totalWithdrawn: 0, thisMonth: 0 };
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const totalReceived = transactions
+      .filter(tx => tx.type === "credit")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const totalWithdrawn = transactions
+      .filter(tx => tx.type === "debit")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const thisMonth = transactions
+      .filter(tx => {
+        const txDate = new Date(tx.created_at);
+        return tx.type === "credit" && 
+               txDate.getMonth() === currentMonth && 
+               txDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    return { totalReceived, totalWithdrawn, thisMonth };
+  }, [transactions]);
 
   return (
     <DashboardLayout>
@@ -91,21 +116,27 @@ export default function WalletPage() {
               <ArrowDownRight className="w-5 h-5" />
               <span className="text-sm font-medium">Total Received</span>
             </div>
-            <p className="font-display text-xl font-bold text-foreground">₦250,000</p>
+            <p className="font-display text-xl font-bold text-foreground">
+              {txLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : formatNaira(stats.totalReceived)}
+            </p>
           </div>
           <div className="bg-card rounded-xl border border-border/50 p-4 shadow-soft">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <ArrowUpRight className="w-5 h-5" />
               <span className="text-sm font-medium">Total Withdrawn</span>
             </div>
-            <p className="font-display text-xl font-bold text-foreground">₦125,000</p>
+            <p className="font-display text-xl font-bold text-foreground">
+              {txLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : formatNaira(stats.totalWithdrawn)}
+            </p>
           </div>
           <div className="bg-card rounded-xl border border-border/50 p-4 shadow-soft">
             <div className="flex items-center gap-2 text-primary mb-2">
               <TrendingUp className="w-5 h-5" />
               <span className="text-sm font-medium">This Month</span>
             </div>
-            <p className="font-display text-xl font-bold text-foreground">₦60,000</p>
+            <p className="font-display text-xl font-bold text-foreground">
+              {txLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : formatNaira(stats.thisMonth)}
+            </p>
           </div>
           <div className="bg-card rounded-xl border border-border/50 p-4 shadow-soft">
             <div className="flex items-center gap-2 text-secondary mb-2">
@@ -138,31 +169,45 @@ export default function WalletPage() {
           </div>
 
           <div className="divide-y divide-border/50">
-            {filteredHistory.map((tx) => (
-              <div key={tx.id} className="flex items-center gap-4 p-4 lg:px-6 hover:bg-muted/50 transition-colors">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  tx.type === "credit" ? "bg-success/10" : "bg-muted"
-                }`}>
-                  {tx.type === "credit" ? (
-                    <ArrowDownRight className="w-5 h-5 text-success" />
-                  ) : (
-                    <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
-                  <p className="text-xs text-muted-foreground">{tx.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-sm font-semibold ${
-                    tx.type === "credit" ? "text-success" : "text-foreground"
-                  }`}>
-                    {tx.type === "credit" ? "+" : "-"}{tx.amount}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Bal: {tx.balance}</p>
-                </div>
+            {txLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
-            ))}
+            ) : filteredHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+                <Wallet className="w-12 h-12 mb-2 opacity-50" />
+                <p className="text-sm">No transactions yet</p>
+              </div>
+            ) : (
+              filteredHistory.slice(0, 10).map((tx) => (
+                <div key={tx.id} className="flex items-center gap-4 p-4 lg:px-6 hover:bg-muted/50 transition-colors">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    tx.type === "credit" ? "bg-success/10" : "bg-muted"
+                  }`}>
+                    {tx.type === "credit" ? (
+                      <ArrowDownRight className="w-5 h-5 text-success" />
+                    ) : (
+                      <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {tx.description || (tx.type === "credit" ? "Wallet Funding" : "Withdrawal")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(tx.created_at), "MMM d, yyyy")}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold ${
+                      tx.type === "credit" ? "text-success" : "text-foreground"
+                    }`}>
+                      {tx.type === "credit" ? "+" : "-"}{formatNaira(tx.amount)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
