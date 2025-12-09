@@ -10,9 +10,12 @@ import {
   Send,
   Loader2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calendar,
+  Download,
+  X
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
 import { FundWalletModal } from "@/components/wallet/FundWalletModal";
 import { WithdrawModal } from "@/components/wallet/WithdrawModal";
@@ -20,8 +23,12 @@ import { usePaymentCallback } from "@/hooks/usePaymentCallback";
 import { LinkedBanksManager } from "@/components/wallet/LinkedBanksManager";
 import { AddBankModal } from "@/components/wallet/AddBankModal";
 import { useLinkedBanks } from "@/hooks/useLinkedBanks";
-import { useWalletTransactions } from "@/hooks/useWalletTransactions";
-import { format } from "date-fns";
+import { useWalletTransactions, WalletTransaction } from "@/hooks/useWalletTransactions";
+import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -31,6 +38,10 @@ export default function WalletPage() {
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [addBankModalOpen, setAddBankModalOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
   const { data: wallet, isLoading: walletLoading } = useWallet();
   const { isVerifying } = usePaymentCallback();
   const { data: linkedBanks } = useLinkedBanks();
@@ -39,17 +50,70 @@ export default function WalletPage() {
   const filteredHistory = useMemo(() => {
     if (!transactions) return [];
     return transactions.filter(tx => {
-      if (activeTab === "all") return true;
-      if (activeTab === "credits") return tx.type === "credit";
-      return tx.type === "debit";
+      // Filter by tab
+      if (activeTab === "credits" && tx.type !== "credit") return false;
+      if (activeTab === "debits" && tx.type !== "debit") return false;
+      
+      // Filter by date range
+      if (dateRange.from || dateRange.to) {
+        const txDate = new Date(tx.created_at);
+        const from = dateRange.from ? startOfDay(dateRange.from) : new Date(0);
+        const to = dateRange.to ? endOfDay(dateRange.to) : new Date();
+        if (!isWithinInterval(txDate, { start: from, end: to })) return false;
+      }
+      
+      return true;
     });
-  }, [transactions, activeTab]);
+  }, [transactions, activeTab, dateRange]);
 
-  // Reset to page 1 when tab changes
+  // Reset to page 1 when tab or date range changes
   const handleTabChange = (tab: "all" | "credits" | "debits") => {
     setActiveTab(tab);
     setCurrentPage(1);
   };
+
+  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setDateRange(range);
+    setCurrentPage(1);
+  };
+
+  const clearDateRange = () => {
+    setDateRange({ from: undefined, to: undefined });
+    setCurrentPage(1);
+  };
+
+  // Export to CSV
+  const exportToCSV = useCallback(() => {
+    if (!filteredHistory.length) {
+      toast.error("No transactions to export");
+      return;
+    }
+
+    const headers = ["Date", "Type", "Description", "Amount (₦)"];
+    const rows = filteredHistory.map(tx => [
+      format(new Date(tx.created_at), "yyyy-MM-dd HH:mm:ss"),
+      tx.type === "credit" ? "Credit" : "Debit",
+      tx.description || (tx.type === "credit" ? "Wallet Funding" : "Withdrawal"),
+      tx.type === "credit" ? tx.amount.toString() : `-${tx.amount}`
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `wallet-transactions-${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Transactions exported successfully");
+  }, [filteredHistory]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
@@ -168,7 +232,59 @@ export default function WalletPage() {
         {/* Transaction History */}
         <div className="bg-card rounded-xl border border-border/50 shadow-soft">
           <div className="p-4 lg:p-6 border-b border-border/50">
-            <h2 className="font-display text-lg font-semibold mb-4">Wallet History</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <h2 className="font-display text-lg font-semibold">Wallet History</h2>
+              <div className="flex items-center gap-2">
+                {/* Date Range Filter */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        (dateRange.from || dateRange.to) && "text-foreground"
+                      )}
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "MMM d, yyyy")
+                        )
+                      ) : (
+                        <span>Filter by date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <CalendarComponent
+                      mode="range"
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => handleDateRangeChange({ from: range?.from, to: range?.to })}
+                      numberOfMonths={2}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Clear Date Filter */}
+                {(dateRange.from || dateRange.to) && (
+                  <Button variant="ghost" size="sm" onClick={clearDateRange}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+
+                {/* Export Button */}
+                <Button variant="outline" size="sm" onClick={exportToCSV} disabled={txLoading || !filteredHistory.length}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
             <div className="flex gap-2">
               {(["all", "credits", "debits"] as const).map((tab) => (
                 <button
