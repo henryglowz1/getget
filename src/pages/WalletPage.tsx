@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   Wallet, 
   ArrowUpRight, 
@@ -13,7 +14,8 @@ import {
   ChevronRight,
   Calendar,
   Download,
-  X
+  X,
+  Search
 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
@@ -29,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SpendingTrendChart } from "@/components/wallet/SpendingTrendChart";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -42,6 +45,7 @@ export default function WalletPage() {
     from: undefined,
     to: undefined,
   });
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: wallet, isLoading: walletLoading } = useWallet();
   const { isVerifying } = usePaymentCallback();
   const { data: linkedBanks } = useLinkedBanks();
@@ -62,9 +66,17 @@ export default function WalletPage() {
         if (!isWithinInterval(txDate, { start: from, end: to })) return false;
       }
       
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const description = (tx.description || "").toLowerCase();
+        const refId = (tx.reference_id || "").toLowerCase();
+        if (!description.includes(query) && !refId.includes(query)) return false;
+      }
+      
       return true;
     });
-  }, [transactions, activeTab, dateRange]);
+  }, [transactions, activeTab, dateRange, searchQuery]);
 
   // Reset to page 1 when tab or date range changes
   const handleTabChange = (tab: "all" | "credits" | "debits") => {
@@ -79,6 +91,11 @@ export default function WalletPage() {
 
   const clearDateRange = () => {
     setDateRange({ from: undefined, to: undefined });
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
@@ -229,12 +246,52 @@ export default function WalletPage() {
           </div>
         </div>
 
+        {/* Spending Trend Chart */}
+        <div className="bg-card rounded-xl border border-border/50 shadow-soft p-4 lg:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-semibold">Spending Trends</h2>
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-success" />
+                <span className="text-muted-foreground">Credits</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-muted-foreground" />
+                <span className="text-muted-foreground">Debits</span>
+              </div>
+            </div>
+          </div>
+          {txLoading ? (
+            <div className="flex items-center justify-center h-[280px]">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : transactions && transactions.length > 0 ? (
+            <SpendingTrendChart transactions={transactions} days={30} />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground">
+              <TrendingUp className="w-12 h-12 mb-2 opacity-50" />
+              <p className="text-sm">No data to display yet</p>
+            </div>
+          )}
+        </div>
+
         {/* Transaction History */}
         <div className="bg-card rounded-xl border border-border/50 shadow-soft">
           <div className="p-4 lg:p-6 border-b border-border/50">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h2 className="font-display text-lg font-semibold">Wallet History</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search transactions..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="pl-9 h-9 w-[180px] text-sm"
+                  />
+                </div>
+
                 {/* Date Range Filter */}
                 <Popover>
                   <PopoverTrigger asChild>
