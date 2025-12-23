@@ -1,76 +1,50 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Plus, 
   Search, 
   Users, 
   Calendar, 
-  TrendingUp,
   ChevronRight,
-  Clock,
   CheckCircle2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-
-const groups = [
-  { 
-    id: 1, 
-    name: "Friends Circle", 
-    members: 10, 
-    contribution: "₦10,000", 
-    cycle: "Monthly", 
-    nextPayout: "Dec 15, 2024",
-    totalPool: "₦100,000",
-    position: 3,
-    status: "active",
-    progress: 30
-  },
-  { 
-    id: 2, 
-    name: "Family Savings", 
-    members: 5, 
-    contribution: "₦20,000", 
-    cycle: "Monthly", 
-    nextPayout: "Jan 1, 2025",
-    totalPool: "₦100,000",
-    position: 2,
-    status: "active",
-    progress: 60
-  },
-  { 
-    id: 3, 
-    name: "Office Group", 
-    members: 8, 
-    contribution: "₦5,000", 
-    cycle: "Weekly", 
-    nextPayout: "Dec 2, 2024",
-    totalPool: "₦40,000",
-    position: 5,
-    status: "active",
-    progress: 45
-  },
-  { 
-    id: 4, 
-    name: "Neighborhood Ajo", 
-    members: 12, 
-    contribution: "₦15,000", 
-    cycle: "Monthly", 
-    nextPayout: "Completed",
-    totalPool: "₦180,000",
-    position: 1,
-    status: "completed",
-    progress: 100
-  },
-];
+import { useGroups } from "@/hooks/useGroups";
 
 export default function Groups() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: groups, isLoading } = useGroups();
 
-  const filteredGroups = groups.filter(group => 
+  const filteredGroups = (groups || []).filter(group => 
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatCurrency = (amount: number) => `₦${(amount / 100).toLocaleString()}`;
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <Skeleton className="h-8 w-32 mb-2" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Skeleton className="h-10 w-full max-w-md" />
+          <div className="grid md:grid-cols-2 gap-4 lg:gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-64 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -119,7 +93,7 @@ export default function Groups() {
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      {group.members} members
+                      {group.memberCount || 0} members
                     </div>
                   </div>
                 </div>
@@ -136,12 +110,12 @@ export default function Groups() {
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Cycle Progress</span>
-                  <span className="font-medium text-foreground">{group.progress}%</span>
+                  <span className="font-medium text-foreground">{group.progress || 0}%</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-primary rounded-full transition-all duration-500"
-                    style={{ width: `${group.progress}%` }}
+                    style={{ width: `${group.progress || 0}%` }}
                   />
                 </div>
               </div>
@@ -150,14 +124,14 @@ export default function Groups() {
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Contribution</p>
-                  <p className="font-semibold text-foreground">{group.contribution}</p>
-                  <p className="text-xs text-muted-foreground">{group.cycle}</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(group.contribution_amount)}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{group.cycle_type}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Your Position</p>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-foreground">#{group.position}</span>
-                    <span className="text-xs text-muted-foreground">of {group.members}</span>
+                    <span className="font-semibold text-foreground">#{group.userPosition || "-"}</span>
+                    <span className="text-xs text-muted-foreground">of {group.max_members}</span>
                   </div>
                 </div>
               </div>
@@ -168,8 +142,8 @@ export default function Groups() {
                   {group.status === "active" ? (
                     <>
                       <Calendar className="w-4 h-4 text-primary" />
-                      <span className="text-muted-foreground">Next payout:</span>
-                      <span className="font-medium text-foreground">{group.nextPayout}</span>
+                      <span className="text-muted-foreground">Cycle:</span>
+                      <span className="font-medium text-foreground">{group.current_cycle || 1}</span>
                     </>
                   ) : (
                     <>

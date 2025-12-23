@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,9 +7,11 @@ import { Wallet, Mail, Lock, User, Phone, ArrowRight, CheckCircle2 } from "lucid
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { signUp, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -21,11 +23,14 @@ export default function Register() {
     confirmPassword: ""
   });
 
+  const referralCode = searchParams.get("ref");
+  const redirectUrl = searchParams.get("redirect");
+
   useEffect(() => {
     if (user) {
-      navigate("/dashboard");
+      navigate(redirectUrl || "/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectUrl]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -54,30 +59,57 @@ export default function Register() {
 
     setIsLoading(true);
     
-    const { error } = await signUp(
+    const result = await signUp(
       formData.email, 
       formData.password, 
       formData.name,
       formData.phone
     );
     
-    if (error) {
+    if (result.error) {
       setIsLoading(false);
       toast({
         title: "Registration failed",
-        description: error.message.includes("already registered")
+        description: result.error.message.includes("already registered")
           ? "This email is already registered. Please sign in instead."
-          : error.message,
+          : result.error.message,
         variant: "destructive"
       });
       return;
+    }
+
+    // If there's a referral code, create referral record
+    if (referralCode && result.data?.user) {
+      try {
+        // Find the referrer by referral code
+        const { data: referrerProfile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("referral_code", referralCode)
+          .single();
+
+        if (referrerProfile) {
+          // Create referral record
+          await supabase
+            .from("referrals")
+            .insert({
+              referrer_id: referrerProfile.user_id,
+              referred_user_id: result.data.user.id,
+              referral_code: referralCode,
+              status: "pending",
+            });
+        }
+      } catch (err) {
+        console.error("Failed to create referral record:", err);
+        // Don't block registration if referral fails
+      }
     }
 
     toast({
       title: "Account created!",
       description: "Welcome to AjoConnect. Let's get you started.",
     });
-    navigate("/dashboard");
+    navigate(redirectUrl || "/dashboard");
   };
 
   return (
@@ -97,6 +129,11 @@ export default function Register() {
             <p className="text-muted-foreground">
               Start your automated savings journey today
             </p>
+            {referralCode && (
+              <p className="text-sm text-primary mt-2">
+                🎉 Using referral code: <span className="font-mono font-bold">{referralCode}</span>
+              </p>
+            )}
           </div>
 
           {/* Form Card */}

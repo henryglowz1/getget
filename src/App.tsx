@@ -11,6 +11,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Groups from "./pages/Groups";
 import CreateGroup from "./pages/CreateGroup";
+import GroupDetail from "./pages/GroupDetail";
+import AcceptInvite from "./pages/AcceptInvite";
 import WalletPage from "./pages/WalletPage";
 import Cards from "./pages/Cards";
 import Transactions from "./pages/Transactions";
@@ -30,6 +32,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/invite/:groupId" element={<AcceptInvite />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
@@ -43,6 +46,11 @@ const App = () => (
             <Route path="/dashboard/groups/create" element={
               <ProtectedRoute>
                 <CreateGroup />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/groups/:id" element={
+              <ProtectedRoute>
+                <GroupDetail />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/wallet" element={
