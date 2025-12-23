@@ -13,35 +13,93 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function CreateGroup() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
+    description: "",
     contributionAmount: "",
     cycleType: "monthly",
     startDate: "",
     maxMembers: ""
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "Please sign in to create a group.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Create the ajo group
+      const { data: ajo, error: ajoError } = await supabase
+        .from("ajos")
+        .insert({
+          name: formData.name,
+          description: formData.description || null,
+          contribution_amount: parseInt(formData.contributionAmount) * 100, // Convert to kobo
+          cycle_type: formData.cycleType,
+          start_date: formData.startDate,
+          max_members: parseInt(formData.maxMembers),
+          creator_id: user.id,
+          status: "active",
+          current_cycle: 1,
+        })
+        .select()
+        .single();
+
+      if (ajoError) throw ajoError;
+
+      // Add creator as first member
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .insert({
+          ajo_id: ajo.id,
+          user_id: user.id,
+          position: 1,
+          is_active: true,
+        });
+
+      if (membershipError) throw membershipError;
+
+      // Invalidate groups query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+
       toast({
         title: "Group created!",
         description: "Your Ajo group has been created successfully.",
       });
-      navigate("/dashboard/groups");
-    }, 1000);
+      
+      navigate(`/dashboard/groups/${ajo.id}`);
+    } catch (error: any) {
+      console.error("Error creating group:", error);
+      toast({
+        title: "Failed to create group",
+        description: error.message || "Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,6 +135,19 @@ export default function CreateGroup() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (optional)</Label>
+              <textarea
+                id="description"
+                name="description"
+                placeholder="Brief description of the group..."
+                className="flex min-h-20 w-full rounded-lg border border-input bg-card px-4 py-3 text-base ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 hover:border-primary/50 resize-none"
+                value={formData.description}
+                onChange={handleChange}
+              />
             </div>
 
             {/* Contribution Amount */}
