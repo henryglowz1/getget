@@ -62,6 +62,47 @@ export type Database = {
         }
         Relationships: []
       }
+      group_invites: {
+        Row: {
+          ajo_id: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          invite_code: string
+          invitee_email: string
+          inviter_id: string
+          status: string | null
+        }
+        Insert: {
+          ajo_id: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invite_code: string
+          invitee_email: string
+          inviter_id: string
+          status?: string | null
+        }
+        Update: {
+          ajo_id?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invite_code?: string
+          invitee_email?: string
+          inviter_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_invites_ajo_id_fkey"
+            columns: ["ajo_id"]
+            isOneToOne: false
+            referencedRelation: "ajos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ledger: {
         Row: {
           ajo_id: string | null
@@ -213,6 +254,8 @@ export type Database = {
           full_name: string
           id: string
           phone: string | null
+          referral_code: string | null
+          referred_by: string | null
           updated_at: string
           user_id: string
         }
@@ -223,6 +266,8 @@ export type Database = {
           full_name: string
           id?: string
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
           updated_at?: string
           user_id: string
         }
@@ -233,8 +278,46 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          referral_code: string
+          referred_user_id: string | null
+          referrer_id: string
+          reward_amount: number | null
+          reward_paid: boolean | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          referral_code: string
+          referred_user_id?: string | null
+          referrer_id: string
+          reward_amount?: number | null
+          reward_paid?: boolean | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          referral_code?: string
+          referred_user_id?: string | null
+          referrer_id?: string
+          reward_amount?: number | null
+          reward_paid?: boolean | null
+          status?: string | null
         }
         Relationships: []
       }
@@ -339,12 +422,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      process_referral_reward: {
+        Args: { p_referred_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
