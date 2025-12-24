@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MembersList } from "@/components/groups/MembersList";
 import { InviteMemberModal } from "@/components/groups/InviteMemberModal";
+import { PayContributionModal } from "@/components/groups/PayContributionModal";
+import { ContributionHistory } from "@/components/groups/ContributionHistory";
 import { useGroupDetail } from "@/hooks/useGroupDetail";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -14,6 +16,7 @@ import {
   Clock,
   Crown,
   TrendingUp,
+  Receipt,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -26,9 +29,13 @@ export default function GroupDetail() {
     invites,
     isLoading,
     isCreator,
+    isMember,
     createInvite,
     deleteInvite,
   } = useGroupDetail(id);
+
+  // Find current user's membership
+  const currentMembership = members.find((m) => m.user_id === user?.id);
 
   if (isLoading) {
     return (
@@ -105,16 +112,26 @@ export default function GroupDetail() {
             </div>
           </div>
 
-          {isCreator && (
-            <InviteMemberModal
-              groupId={group.id}
-              groupName={group.name}
-              invites={invites}
-              onInvite={handleInvite}
-              onDeleteInvite={handleDeleteInvite}
-              isLoading={createInvite.isPending}
-            />
-          )}
+          <div className="flex gap-2">
+            {currentMembership && (
+              <PayContributionModal
+                membershipId={currentMembership.id}
+                ajoId={group.id}
+                contributionAmount={group.contribution_amount}
+                cycleName={`Cycle ${group.current_cycle || 1}`}
+              />
+            )}
+            {isCreator && (
+              <InviteMemberModal
+                groupId={group.id}
+                groupName={group.name}
+                invites={invites}
+                onInvite={handleInvite}
+                onDeleteInvite={handleDeleteInvite}
+                isLoading={createInvite.isPending}
+              />
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -201,6 +218,17 @@ export default function GroupDetail() {
             creatorId={group.creator_id}
             currentUserId={user?.id}
           />
+        </div>
+
+        {/* Contribution History */}
+        <div className="bg-card rounded-xl border border-border/50 p-6 shadow-soft">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-foreground flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-primary" />
+              Contribution History
+            </h2>
+          </div>
+          <ContributionHistory ajoId={group.id} />
         </div>
       </div>
     </DashboardLayout>
