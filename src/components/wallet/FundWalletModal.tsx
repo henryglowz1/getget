@@ -18,7 +18,7 @@ const PRESET_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
 export function FundWalletModal({ open, onOpenChange }: FundWalletModalProps) {
   const { user } = useAuth();
-  const { data: profile } = useProfile();
+  const { profile } = useProfile();
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 

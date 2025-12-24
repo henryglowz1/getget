@@ -16,7 +16,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
 
 export default function Dashboard() {
-  const { data: profile } = useProfile();
+  const { profile } = useProfile();
   const { data: wallet } = useWallet();
 
   const firstName = profile?.full_name?.split(" ")[0] || "there";
