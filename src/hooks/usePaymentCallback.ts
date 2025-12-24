@@ -31,13 +31,27 @@ export function usePaymentCallback() {
       }
 
       if (data?.success && data?.data?.status === "success") {
-        toast({
-          title: "Payment successful!",
-          description: `₦${(data.data.amount / 100).toLocaleString()} has been added to your wallet.`,
-        });
+        // Check if this was a card tokenization or wallet funding
+        const isCardLink = data.data.metadata?.type === "card_tokenization";
+        
+        if (isCardLink) {
+          toast({
+            title: "Card linked successfully!",
+            description: "Your card has been securely added for automatic debits.",
+          });
+          // Invalidate user cards query
+          queryClient.invalidateQueries({ queryKey: ["user-cards"] });
+        } else {
+          toast({
+            title: "Payment successful!",
+            description: `₦${(data.data.amount / 100).toLocaleString()} has been added to your wallet.`,
+          });
+        }
         
         // Invalidate wallet query to refresh balance
         queryClient.invalidateQueries({ queryKey: ["wallet"] });
+        // Also invalidate cards in case a card was saved
+        queryClient.invalidateQueries({ queryKey: ["user-cards"] });
       } else if (data?.data?.status === "failed") {
         toast({
           title: "Payment failed",

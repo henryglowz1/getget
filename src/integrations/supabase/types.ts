@@ -321,6 +321,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_cards: {
+        Row: {
+          authorization_code: string
+          bank_name: string | null
+          card_brand: string
+          card_last4: string
+          created_at: string
+          exp_month: string | null
+          exp_year: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          authorization_code: string
+          bank_name?: string | null
+          card_brand: string
+          card_last4: string
+          created_at?: string
+          exp_month?: string | null
+          exp_year?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          authorization_code?: string
+          bank_name?: string | null
+          card_brand?: string
+          card_last4?: string
+          created_at?: string
+          exp_month?: string | null
+          exp_year?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
