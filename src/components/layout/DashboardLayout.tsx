@@ -31,7 +31,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const { data: profile } = useProfile();
+  const { profile } = useProfile();
 
   const handleSignOut = async () => {
     await signOut();
