@@ -131,20 +131,60 @@ serve(async (req: Request) => {
         console.error('Error logging to ledger:', ledgerError);
       }
 
-      // Save card authorization if available
-      if (transactionData.authorization) {
+      // Save card authorization to user_cards if available
+      if (transactionData.authorization && transactionData.authorization.reusable) {
+        const auth = transactionData.authorization;
+        
+        // Check if card already exists
+        const { data: existingCard } = await supabase
+          .from('user_cards')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('authorization_code', auth.authorization_code)
+          .maybeSingle();
+
+        if (!existingCard) {
+          // Check if user has any cards - if not, make this default
+          const { count } = await supabase
+            .from('user_cards')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_active', true);
+
+          const { error: cardError } = await supabase
+            .from('user_cards')
+            .insert({
+              user_id: user.id,
+              authorization_code: auth.authorization_code,
+              card_brand: auth.brand || auth.card_type || 'Unknown',
+              card_last4: auth.last4,
+              exp_month: auth.exp_month,
+              exp_year: auth.exp_year,
+              bank_name: auth.bank,
+              is_default: count === 0, // First card is default
+              is_active: true,
+            });
+
+          if (cardError) {
+            console.error('Error saving card:', cardError);
+          } else {
+            console.log('Card saved successfully');
+          }
+        }
+
+        // Also update memberships for backward compatibility
         const { error: membershipError } = await supabase
           .from('memberships')
           .update({
-            authorization_code: transactionData.authorization.authorization_code,
-            card_brand: transactionData.authorization.brand,
-            card_last4: transactionData.authorization.last4,
+            authorization_code: auth.authorization_code,
+            card_brand: auth.brand,
+            card_last4: auth.last4,
           })
           .eq('user_id', user.id)
           .is('authorization_code', null);
 
         if (membershipError) {
-          console.error('Error saving card authorization:', membershipError);
+          console.error('Error saving card to membership:', membershipError);
         }
       }
     } else {
@@ -176,6 +216,7 @@ serve(async (req: Request) => {
           paid_at: transactionData.paid_at,
           channel: transactionData.channel,
           authorization: transactionData.authorization,
+          metadata: transactionData.metadata, // Include metadata for card tokenization detection
         },
       }),
       {
