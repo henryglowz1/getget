@@ -11,11 +11,13 @@ import {
   Menu,
   X,
   Bell,
-  ChevronDown
+  ChevronDown,
+  ShieldCheck
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 const sidebarLinks = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -26,12 +28,17 @@ const sidebarLinks = [
   { to: "/dashboard/settings", icon: Settings, label: "Settings" },
 ];
 
+const adminLink = { to: "/admin", icon: ShieldCheck, label: "Admin" };
+
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { profile } = useProfile();
+  const { isAdmin } = useAdminRole();
+
+  const allLinks = isAdmin ? [...sidebarLinks, adminLink] : sidebarLinks;
 
   const handleSignOut = async () => {
     await signOut();
@@ -107,7 +114,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {sidebarLinks.map((link) => {
+            {allLinks.map((link) => {
               const isActive = location.pathname === link.to;
               return (
                 <Link
@@ -156,7 +163,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Desktop Header */}
         <header className="hidden lg:flex h-16 items-center justify-between px-8 border-b border-border bg-card/50 backdrop-blur-sm">
           <h1 className="text-lg font-display font-semibold">
-            {sidebarLinks.find((l) => l.to === location.pathname)?.label || "Dashboard"}
+            {allLinks.find((l) => l.to === location.pathname)?.label || "Dashboard"}
           </h1>
           <div className="flex items-center gap-4">
             <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors relative">
