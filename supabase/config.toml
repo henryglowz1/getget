@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.charge-contribution]
 verify_jwt = true
+
+[functions.process-scheduled-contributions]
+verify_jwt = false
