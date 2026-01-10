@@ -1,5 +1,4 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,30 +9,33 @@ interface VerifyPaymentRequest {
   reference: string;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY')!;
+
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('No authorization header');
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
+    // User context for authentication
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Service role for database operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
       throw new Error('Unauthorized');
     }
@@ -52,7 +54,7 @@ serve(async (req: Request) => {
       {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${Deno.env.get('PAYSTACK_SECRET_KEY')}`,
+          'Authorization': `Bearer ${paystackSecretKey}`,
           'Content-Type': 'application/json',
         },
       }
@@ -71,6 +73,7 @@ serve(async (req: Request) => {
       reference,
       status: transactionData.status,
       amount: transactionData.amount,
+      metadata: transactionData.metadata,
     });
 
     // Verify the transaction belongs to this user
@@ -82,61 +85,99 @@ serve(async (req: Request) => {
       throw new Error('Unauthorized: Transaction does not belong to user');
     }
 
+    const isCardTokenization = transactionData.metadata?.type === 'card_tokenization';
+
     // Update ledger based on verification result
     if (transactionData.status === 'success') {
-      // Get current wallet balance
-      const { data: wallet, error: fetchError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
+      // Only update wallet if NOT a card tokenization (refund the test charge)
+      if (!isCardTokenization) {
+        // Get current wallet balance
+        const { data: wallet, error: fetchError } = await supabaseAdmin
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single();
 
-      if (fetchError) {
-        console.error('Error fetching wallet:', fetchError);
-        throw new Error('Failed to fetch wallet');
-      }
+        if (fetchError) {
+          console.error('Error fetching wallet:', fetchError);
+          throw new Error('Failed to fetch wallet');
+        }
 
-      // Update wallet balance
-      const newBalance = (wallet?.balance || 0) + transactionData.amount;
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({
-          balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
+        // Update wallet balance
+        const newBalance = (wallet?.balance || 0) + transactionData.amount;
+        const { error: walletError } = await supabaseAdmin
+          .from('wallets')
+          .update({
+            balance: newBalance,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
 
-      if (walletError) {
-        console.error('Error updating wallet:', walletError);
-      }
+        if (walletError) {
+          console.error('Error updating wallet:', walletError);
+        }
 
-      // Log successful transaction
-      const { error: ledgerError } = await supabase
-        .from('ledger')
-        .insert({
+        // Log wallet funding transaction
+        const { error: ledgerError } = await supabaseAdmin
+          .from('ledger')
+          .insert({
+            user_id: user.id,
+            type: 'deposit',
+            amount: transactionData.amount,
+            status: 'completed',
+            description: 'Wallet funding',
+            provider_reference: reference,
+            metadata: {
+              channel: transactionData.channel,
+              paid_at: transactionData.paid_at,
+            },
+          });
+
+        if (ledgerError) {
+          console.error('Error logging to ledger:', ledgerError);
+        }
+
+        // Also record in wallet_transactions
+        await supabaseAdmin.from('wallet_transactions').insert({
           user_id: user.id,
-          type: 'deposit',
+          type: 'credit',
           amount: transactionData.amount,
-          status: 'completed',
-          description: 'Payment successful',
-          provider_reference: reference,
-          metadata: {
-            channel: transactionData.channel,
-            paid_at: transactionData.paid_at,
-            authorization: transactionData.authorization,
-          },
+          description: 'Wallet funding via Paystack',
         });
+      } else {
+        // Card tokenization - log the verification charge
+        const { error: ledgerError } = await supabaseAdmin
+          .from('ledger')
+          .insert({
+            user_id: user.id,
+            type: 'card_verification',
+            amount: transactionData.amount,
+            status: 'completed',
+            description: 'Card verification charge',
+            provider_reference: reference,
+            metadata: {
+              type: 'card_tokenization',
+              channel: transactionData.channel,
+              paid_at: transactionData.paid_at,
+            },
+          });
 
-      if (ledgerError) {
-        console.error('Error logging to ledger:', ledgerError);
+        if (ledgerError) {
+          console.error('Error logging card verification to ledger:', ledgerError);
+        }
       }
 
       // Save card authorization to user_cards if available
       if (transactionData.authorization && transactionData.authorization.reusable) {
         const auth = transactionData.authorization;
+        console.log('Saving card authorization:', {
+          brand: auth.brand,
+          last4: auth.last4,
+          bank: auth.bank,
+        });
         
         // Check if card already exists
-        const { data: existingCard } = await supabase
+        const { data: existingCard } = await supabaseAdmin
           .from('user_cards')
           .select('id')
           .eq('user_id', user.id)
@@ -145,13 +186,13 @@ serve(async (req: Request) => {
 
         if (!existingCard) {
           // Check if user has any cards - if not, make this default
-          const { count } = await supabase
+          const { count } = await supabaseAdmin
             .from('user_cards')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
             .eq('is_active', true);
 
-          const { error: cardError } = await supabase
+          const { error: cardError } = await supabaseAdmin
             .from('user_cards')
             .insert({
               user_id: user.id,
@@ -170,10 +211,12 @@ serve(async (req: Request) => {
           } else {
             console.log('Card saved successfully');
           }
+        } else {
+          console.log('Card already exists, skipping save');
         }
 
         // Also update memberships for backward compatibility
-        const { error: membershipError } = await supabase
+        const { error: membershipError } = await supabaseAdmin
           .from('memberships')
           .update({
             authorization_code: auth.authorization_code,
@@ -186,19 +229,23 @@ serve(async (req: Request) => {
         if (membershipError) {
           console.error('Error saving card to membership:', membershipError);
         }
+      } else {
+        console.log('No reusable authorization found:', transactionData.authorization);
       }
     } else {
       // Log failed transaction
-      const { error: ledgerError } = await supabase
+      const { error: ledgerError } = await supabaseAdmin
         .from('ledger')
         .insert({
           user_id: user.id,
-          type: 'deposit',
+          type: isCardTokenization ? 'card_verification' : 'deposit',
           amount: transactionData.amount,
           status: 'failed',
           description: `Payment ${transactionData.status}`,
           provider_reference: reference,
-          metadata: transactionData,
+          metadata: {
+            gateway_response: transactionData.gateway_response,
+          },
         });
 
       if (ledgerError) {
@@ -216,15 +263,12 @@ serve(async (req: Request) => {
           paid_at: transactionData.paid_at,
           channel: transactionData.channel,
           authorization: transactionData.authorization,
-          metadata: transactionData.metadata, // Include metadata for card tokenization detection
+          metadata: transactionData.metadata,
         },
       }),
       {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
   } catch (error: any) {
@@ -236,10 +280,7 @@ serve(async (req: Request) => {
       }),
       {
         status: error.message.includes('Unauthorized') ? 401 : 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
   }
