@@ -2,11 +2,14 @@ import { useParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { MembersList } from "@/components/groups/MembersList";
 import { InviteMemberModal } from "@/components/groups/InviteMemberModal";
 import { PayContributionModal } from "@/components/groups/PayContributionModal";
 import { ContributionHistory } from "@/components/groups/ContributionHistory";
+import { JoinRequestsPanel } from "@/components/groups/JoinRequestsPanel";
 import { useGroupDetail } from "@/hooks/useGroupDetail";
+import { useGroupJoinRequests } from "@/hooks/usePublicGroups";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   ArrowLeft,
@@ -17,6 +20,9 @@ import {
   Crown,
   TrendingUp,
   Receipt,
+  Globe,
+  Lock,
+  UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -33,6 +39,8 @@ export default function GroupDetail() {
     createInvite,
     deleteInvite,
   } = useGroupDetail(id);
+
+  const { requests: joinRequests } = useGroupJoinRequests(id);
 
   // Find current user's membership
   const currentMembership = members.find((m) => m.user_id === user?.id);
@@ -106,6 +114,17 @@ export default function GroupDetail() {
                     {group.name}
                   </h1>
                   {isCreator && <Crown className="w-5 h-5 text-warning" />}
+                  {(group as any).is_public ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <Globe className="w-3 h-3" />
+                      Public
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="gap-1">
+                      <Lock className="w-3 h-3" />
+                      Private
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-muted-foreground">{group.description || "No description"}</p>
               </div>
@@ -220,6 +239,23 @@ export default function GroupDetail() {
           />
         </div>
 
+        {/* Join Requests - Only visible to creator */}
+        {isCreator && (group as any).is_public && (
+          <div className="bg-card rounded-xl border border-border/50 p-6 shadow-soft">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-semibold text-foreground flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary" />
+                Join Requests
+                {joinRequests.length > 0 && (
+                  <Badge variant="default" className="ml-2">
+                    {joinRequests.length}
+                  </Badge>
+                )}
+              </h2>
+            </div>
+            <JoinRequestsPanel groupId={group.id} />
+          </div>
+        )}
         {/* Contribution History */}
         <div className="bg-card rounded-xl border border-border/50 p-6 shadow-soft">
           <div className="flex items-center justify-between mb-4">

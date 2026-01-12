@@ -55,12 +55,20 @@ export default function Groups() {
             <h1 className="font-display text-2xl font-bold text-foreground">Ajo Groups</h1>
             <p className="text-muted-foreground">Manage your contribution groups</p>
           </div>
-          <Button variant="hero" asChild>
-            <Link to="/dashboard/groups/create">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Group
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/dashboard/groups/browse">
+                <Search className="w-4 h-4 mr-2" />
+                Browse Public
+              </Link>
+            </Button>
+            <Button variant="hero" asChild>
+              <Link to="/dashboard/groups/create">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Group
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
