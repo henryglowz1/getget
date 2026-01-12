@@ -2,13 +2,16 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { 
   ArrowLeft, 
   ArrowRight, 
   Users, 
   Calendar,
   Wallet,
-  Info
+  Info,
+  Globe,
+  Lock
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -29,7 +32,8 @@ export default function CreateGroup() {
     contributionAmount: "",
     cycleType: "monthly",
     startDate: "",
-    maxMembers: ""
+    maxMembers: "",
+    isPublic: false
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -63,6 +67,7 @@ export default function CreateGroup() {
           creator_id: user.id,
           status: "active",
           current_cycle: 1,
+          is_public: formData.isPublic,
         })
         .select()
         .single();
@@ -222,6 +227,33 @@ export default function CreateGroup() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">2-50 members per group</p>
+            </div>
+
+            {/* Public Group Toggle */}
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+              <div className="flex items-center gap-3">
+                {formData.isPublic ? (
+                  <Globe className="w-5 h-5 text-primary" />
+                ) : (
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="font-medium text-foreground">
+                    {formData.isPublic ? "Public Group" : "Private Group"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formData.isPublic
+                      ? "Anyone can discover and request to join"
+                      : "Only invited members can join"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.isPublic}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, isPublic: checked }))
+                }
+              />
             </div>
 
             {/* Info Box */}

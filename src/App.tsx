@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Groups from "./pages/Groups";
 import CreateGroup from "./pages/CreateGroup";
+import BrowseGroups from "./pages/BrowseGroups";
 import GroupDetail from "./pages/GroupDetail";
 import AcceptInvite from "./pages/AcceptInvite";
 import WalletPage from "./pages/WalletPage";
@@ -48,6 +49,11 @@ const App = () => (
             <Route path="/dashboard/groups/create" element={
               <ProtectedRoute>
                 <CreateGroup />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/groups/browse" element={
+              <ProtectedRoute>
+                <BrowseGroups />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/groups/:id" element={

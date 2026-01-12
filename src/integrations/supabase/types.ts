@@ -23,6 +23,7 @@ export type Database = {
           cycle_type: string
           description: string | null
           id: string
+          is_public: boolean
           max_members: number
           name: string
           start_date: string
@@ -38,6 +39,7 @@ export type Database = {
           cycle_type: string
           description?: string | null
           id?: string
+          is_public?: boolean
           max_members?: number
           name: string
           start_date: string
@@ -53,6 +55,7 @@ export type Database = {
           cycle_type?: string
           description?: string | null
           id?: string
+          is_public?: boolean
           max_members?: number
           name?: string
           start_date?: string
@@ -96,6 +99,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "group_invites_ajo_id_fkey"
+            columns: ["ajo_id"]
+            isOneToOne: false
+            referencedRelation: "ajos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      join_requests: {
+        Row: {
+          ajo_id: string
+          created_at: string
+          id: string
+          message: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          ajo_id: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          ajo_id?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_requests_ajo_id_fkey"
             columns: ["ajo_id"]
             isOneToOne: false
             referencedRelation: "ajos"
