@@ -6,6 +6,38 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Normalize names for comparison (remove spaces, special chars, lowercase)
+function normalizeForComparison(name: string): string {
+  return name.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+// Calculate basic string similarity
+function calculateSimilarity(s1: string, s2: string): number {
+  if (s1.length === 0 && s2.length === 0) return 1.0;
+  if (s1.length === 0 || s2.length === 0) return 0.0;
+  
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  
+  // Check if one contains the other (common for Nigerian names with multiple parts)
+  if (longer.includes(shorter)) return 0.8;
+  
+  // Count matching characters
+  let matches = 0;
+  const shorterChars = shorter.split('');
+  const longerChars = longer.split('');
+  
+  for (const char of shorterChars) {
+    const idx = longerChars.indexOf(char);
+    if (idx !== -1) {
+      matches++;
+      longerChars.splice(idx, 1); // Remove matched char to avoid double counting
+    }
+  }
+  
+  return matches / longer.length;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -118,6 +150,74 @@ serve(async (req) => {
 
       const accountName = verifyData.data.account_name;
 
+      // Initialize admin client for database operations
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      );
+
+      // Get user's profile name for ownership verification
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profileError || !profile?.full_name) {
+        console.error("Profile error:", profileError);
+        return new Response(JSON.stringify({ 
+          error: "Please complete your profile with your full name before linking a bank account." 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify name ownership - compare account holder name with profile name
+      const normalizedAccountName = normalizeForComparison(accountName);
+      const normalizedProfileName = normalizeForComparison(profile.full_name);
+      const similarity = calculateSimilarity(normalizedAccountName, normalizedProfileName);
+
+      console.log("Name comparison:", {
+        accountName,
+        profileName: profile.full_name,
+        normalizedAccount: normalizedAccountName,
+        normalizedProfile: normalizedProfileName,
+        similarity
+      });
+
+      // Require at least 50% similarity (lenient for Nigerian names with variations)
+      if (similarity < 0.5) {
+        return new Response(JSON.stringify({ 
+          error: `Account name "${accountName}" does not match your profile name "${profile.full_name}". You can only link bank accounts that belong to you.`,
+          name_mismatch: true,
+          account_name: accountName,
+          profile_name: profile.full_name,
+          match_score: Math.round(similarity * 100)
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check if this bank account is already linked to ANOTHER user (prevent fraud)
+      const { data: existingForOthers } = await supabaseAdmin
+        .from("linked_banks")
+        .select("user_id")
+        .eq("account_number", account_number)
+        .eq("bank_code", bank_code)
+        .neq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingForOthers) {
+        return new Response(JSON.stringify({ 
+          error: "This bank account is already linked to another user. Each account can only be linked once." 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Create transfer recipient
       const recipientResponse = await fetch("https://api.paystack.co/transferrecipient", {
         method: "POST",
@@ -144,12 +244,7 @@ serve(async (req) => {
 
       const recipientCode = recipientData.data.recipient_code;
 
-      // Check if bank already exists for user
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
-
+      // Check if bank already exists for this user
       const { data: existingBank } = await supabaseAdmin
         .from("linked_banks")
         .select("id")
@@ -173,7 +268,7 @@ serve(async (req) => {
 
       const isDefault = count === 0;
 
-      // Insert the bank
+      // Insert the bank with verification status
       const { data: newBank, error: insertError } = await supabaseAdmin
         .from("linked_banks")
         .insert({
@@ -184,19 +279,35 @@ serve(async (req) => {
           account_name: accountName,
           recipient_code: recipientCode,
           is_default: isDefault,
+          is_verified: similarity >= 0.7, // Auto-verify if name match is strong
+          verification_method: similarity >= 0.7 ? "name_match" : null,
+          verified_at: similarity >= 0.7 ? new Date().toISOString() : null,
         })
         .select()
         .single();
 
       if (insertError) {
         console.error("Insert error:", insertError);
+        // Check for unique constraint violation
+        if (insertError.code === "23505") {
+          return new Response(JSON.stringify({ 
+            error: "This bank account is already linked to another user." 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ error: "Failed to save bank account" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: true, bank: newBank }), {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        bank: newBank,
+        name_match_score: Math.round(similarity * 100)
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

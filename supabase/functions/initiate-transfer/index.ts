@@ -68,8 +68,12 @@ serve(async (req) => {
       );
     }
 
+    // Use service role for admin operations
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Verify the recipient belongs to this user
-    const { data: linkedBank, error: bankError } = await supabase
+    const { data: linkedBank, error: bankError } = await supabaseAdmin
       .from("linked_banks")
       .select("*")
       .eq("user_id", user.id)
@@ -84,30 +88,73 @@ serve(async (req) => {
       );
     }
 
-    // Check wallet balance
-    const { data: wallet, error: walletError } = await supabase
-      .from("wallets")
-      .select("*")
+    // Check for concurrent pending withdrawals (rate limiting)
+    const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
+    const { count: pendingCount } = await supabaseAdmin
+      .from("ledger")
+      .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .maybeSingle();
+      .eq("type", "withdrawal")
+      .eq("status", "pending")
+      .gte("created_at", fiveSecondsAgo);
 
-    if (walletError || !wallet) {
-      console.error("Wallet error:", walletError);
+    if (pendingCount && pendingCount > 0) {
       return new Response(
-        JSON.stringify({ success: false, error: "Wallet not found" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (wallet.balance < amount) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Insufficient balance" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "A withdrawal is already in progress. Please wait." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Generate unique reference
     const reference = `WD_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // ATOMICALLY deduct from wallet using the secure function
+    // This prevents race conditions by locking the row during the transaction
+    const { data: balanceResult, error: decrementError } = await supabaseAdmin
+      .rpc("decrement_wallet_balance", {
+        p_user_id: user.id,
+        p_amount: amount
+      });
+
+    if (decrementError) {
+      console.error("Failed to deduct balance:", decrementError);
+      const errorMessage = decrementError.message.includes("Insufficient balance")
+        ? "Insufficient balance"
+        : decrementError.message.includes("Wallet not found")
+        ? "Wallet not found"
+        : "Failed to process withdrawal";
+      return new Response(
+        JSON.stringify({ success: false, error: errorMessage }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Record pending ledger entry BEFORE calling Paystack
+    const { error: ledgerError } = await supabaseAdmin.from("ledger").insert({
+      user_id: user.id,
+      type: "withdrawal",
+      amount: -amount,
+      status: "pending",
+      description: `Withdrawal to ${linkedBank.bank_name}`,
+      provider_reference: reference,
+      metadata: {
+        bank_name: linkedBank.bank_name,
+        account_number: linkedBank.account_number,
+      },
+    });
+
+    if (ledgerError) {
+      console.error("Failed to create ledger entry:", ledgerError);
+      // Refund the balance since we couldn't proceed
+      await supabaseAdmin.rpc("decrement_wallet_balance", {
+        p_user_id: user.id,
+        p_amount: -amount // Negative to add back
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to process withdrawal" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Initiate transfer with Paystack
     const paystackResponse = await fetch("https://api.paystack.co/transfer", {
@@ -129,24 +176,36 @@ serve(async (req) => {
     console.log("Paystack transfer response:", paystackData);
 
     if (!paystackData.status) {
-      throw new Error(paystackData.message || "Transfer initiation failed");
+      // Paystack failed - refund the balance and update ledger
+      console.error("Paystack transfer failed:", paystackData);
+      
+      await supabaseAdmin.rpc("decrement_wallet_balance", {
+        p_user_id: user.id,
+        p_amount: -amount // Negative to add back
+      });
+      
+      await supabaseAdmin
+        .from("ledger")
+        .update({ status: "failed", metadata: { ...linkedBank, error: paystackData.message } })
+        .eq("provider_reference", reference);
+      
+      return new Response(
+        JSON.stringify({ success: false, error: paystackData.message || "Transfer initiation failed" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Use service role to update wallet and create transaction records
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Deduct from wallet
-    const { error: updateError } = await supabaseAdmin
-      .from("wallets")
-      .update({ balance: wallet.balance - amount })
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      console.error("Failed to update wallet:", updateError);
-      // Note: Transfer was already initiated, this is a critical error
-      throw new Error("Failed to update wallet balance");
-    }
+    // Update ledger with transfer code
+    await supabaseAdmin
+      .from("ledger")
+      .update({ 
+        metadata: {
+          transfer_code: paystackData.data.transfer_code,
+          bank_name: linkedBank.bank_name,
+          account_number: linkedBank.account_number,
+        }
+      })
+      .eq("provider_reference", reference);
 
     // Record transaction
     await supabaseAdmin.from("wallet_transactions").insert({
@@ -155,21 +214,6 @@ serve(async (req) => {
       amount: -amount,
       description: `Withdrawal to ${linkedBank.bank_name} - ${linkedBank.account_number}`,
       reference_id: paystackData.data.id?.toString(),
-    });
-
-    // Record in ledger
-    await supabaseAdmin.from("ledger").insert({
-      user_id: user.id,
-      type: "withdrawal",
-      amount: -amount,
-      status: paystackData.data.status === "success" ? "completed" : "pending",
-      description: `Withdrawal to ${linkedBank.bank_name}`,
-      provider_reference: reference,
-      metadata: {
-        transfer_code: paystackData.data.transfer_code,
-        bank_name: linkedBank.bank_name,
-        account_number: linkedBank.account_number,
-      },
     });
 
     console.log("Transfer initiated successfully:", { reference, userId: user.id });

@@ -213,8 +213,11 @@ export type Database = {
           created_at: string
           id: string
           is_default: boolean | null
+          is_verified: boolean | null
           recipient_code: string | null
           user_id: string
+          verification_method: string | null
+          verified_at: string | null
         }
         Insert: {
           account_name: string
@@ -224,8 +227,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean | null
+          is_verified?: boolean | null
           recipient_code?: string | null
           user_id: string
+          verification_method?: string | null
+          verified_at?: string | null
         }
         Update: {
           account_name?: string
@@ -235,8 +241,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean | null
+          is_verified?: boolean | null
           recipient_code?: string | null
           user_id?: string
+          verification_method?: string | null
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -511,6 +520,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_wallet_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: {
+          new_balance: number
+        }[]
+      }
       generate_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
