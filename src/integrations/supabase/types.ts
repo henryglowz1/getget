@@ -519,6 +519,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_ajo_member: {
+        Args: { _ajo_id: string; _user_id: string }
+        Returns: boolean
+      }
       process_referral_reward: {
         Args: { p_referred_user_id: string }
         Returns: undefined
