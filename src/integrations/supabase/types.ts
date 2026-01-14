@@ -299,6 +299,60 @@ export type Database = {
           },
         ]
       }
+      platform_fees: {
+        Row: {
+          ajo_id: string | null
+          created_at: string | null
+          cycle: number
+          fee_amount: number
+          fee_percentage: number | null
+          gross_amount: number
+          id: string
+          net_amount: number
+          payout_ledger_id: string | null
+          user_id: string
+        }
+        Insert: {
+          ajo_id?: string | null
+          created_at?: string | null
+          cycle: number
+          fee_amount: number
+          fee_percentage?: number | null
+          gross_amount: number
+          id?: string
+          net_amount: number
+          payout_ledger_id?: string | null
+          user_id: string
+        }
+        Update: {
+          ajo_id?: string | null
+          created_at?: string | null
+          cycle?: number
+          fee_amount?: number
+          fee_percentage?: number | null
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          payout_ledger_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fees_ajo_id_fkey"
+            columns: ["ajo_id"]
+            isOneToOne: false
+            referencedRelation: "ajos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_fees_payout_ledger_id_fkey"
+            columns: ["payout_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

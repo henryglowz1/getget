@@ -230,14 +230,17 @@ Deno.serve(async (req) => {
           console.error(`Error fetching profile:`, profileError);
         }
 
-        // Calculate payout amount (all contributions minus any fees)
-        const payoutAmount = ajo.contribution_amount * memberCount;
-        console.log(`Payout amount: ${payoutAmount} kobo to ${profile?.full_name || recipientUserId}`);
+        // Calculate payout amount with 6.25% platform fee
+        const FEE_PERCENTAGE = 6.25;
+        const grossAmount = ajo.contribution_amount * memberCount;
+        const feeAmount = Math.round(grossAmount * FEE_PERCENTAGE / 100);
+        const netAmount = grossAmount - feeAmount;
+        console.log(`Payout: Gross ${grossAmount}, Fee ${feeAmount} (${FEE_PERCENTAGE}%), Net ${netAmount} kobo to ${profile?.full_name || recipientUserId}`);
 
         // Generate unique reference
         const reference = `PAYOUT_${ajo.id}_C${currentCycle}_${Date.now()}`;
 
-        // Initiate transfer via Paystack
+        // Initiate transfer via Paystack (net amount after fee deduction)
         const paystackResponse = await fetch("https://api.paystack.co/transfer", {
           method: "POST",
           headers: {
@@ -246,7 +249,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             source: "balance",
-            amount: payoutAmount,
+            amount: netAmount,
             recipient: recipientBank.recipient_code,
             reason: `${ajo.name} - Cycle ${currentCycle} Payout`,
             reference,
@@ -257,11 +260,11 @@ Deno.serve(async (req) => {
         console.log(`Paystack transfer response for ${ajo.name}:`, JSON.stringify(paystackResult));
 
         if (paystackResult.status === true) {
-          // Log payout to ledger
-          const { error: ledgerError } = await supabase.from("ledger").insert({
+          // Log payout to ledger with fee breakdown
+          const { data: ledgerData, error: ledgerError } = await supabase.from("ledger").insert({
             user_id: recipientUserId,
             ajo_id: ajo.id,
-            amount: payoutAmount,
+            amount: netAmount,
             type: "payout",
             status: paystackResult.data?.status === "success" ? "completed" : "pending",
             description: `${ajo.name} - Cycle ${currentCycle} Payout`,
@@ -269,15 +272,37 @@ Deno.serve(async (req) => {
             metadata: {
               cycle: currentCycle,
               member_count: memberCount,
+              gross_amount: grossAmount,
+              fee_percentage: FEE_PERCENTAGE,
+              fee_amount: feeAmount,
+              net_amount: netAmount,
               transfer_code: paystackResult.data?.transfer_code,
               bank_name: recipientBank.bank_name,
               account_number: recipientBank.account_number,
               recipient_name: profile?.full_name,
             },
-          });
+          }).select().single();
 
           if (ledgerError) {
             console.error(`Error logging payout to ledger:`, ledgerError);
+          }
+
+          // Log platform fee to platform_fees table
+          const { error: feeError } = await supabase.from("platform_fees").insert({
+            ajo_id: ajo.id,
+            payout_ledger_id: ledgerData?.id || null,
+            user_id: recipientUserId,
+            gross_amount: grossAmount,
+            fee_amount: feeAmount,
+            net_amount: netAmount,
+            fee_percentage: FEE_PERCENTAGE,
+            cycle: currentCycle,
+          });
+
+          if (feeError) {
+            console.error(`Error logging platform fee:`, feeError);
+          } else {
+            console.log(`Platform fee logged: ${feeAmount} kobo from ${ajo.name} cycle ${currentCycle}`);
           }
 
           // Advance to next cycle
@@ -303,13 +328,16 @@ Deno.serve(async (req) => {
           await supabase.from("ledger").insert({
             user_id: recipientUserId,
             ajo_id: ajo.id,
-            amount: payoutAmount,
+            amount: netAmount,
             type: "payout",
             status: "failed",
             description: `${ajo.name} - Cycle ${currentCycle} Payout (Failed)`,
             provider_reference: reference,
             metadata: {
               cycle: currentCycle,
+              gross_amount: grossAmount,
+              fee_amount: feeAmount,
+              net_amount: netAmount,
               error: paystackResult.message,
             },
           });
