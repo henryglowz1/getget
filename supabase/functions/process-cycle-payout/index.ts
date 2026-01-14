@@ -14,6 +14,7 @@ interface Ajo {
   status: string;
   max_members: number;
   withdrawal_order: string[] | null;
+  fee_percentage: number | null;
 }
 
 interface Membership {
@@ -230,12 +231,12 @@ Deno.serve(async (req) => {
           console.error(`Error fetching profile:`, profileError);
         }
 
-        // Calculate payout amount with 6.25% platform fee
-        const FEE_PERCENTAGE = 6.25;
+        // Calculate payout amount with group's configured platform fee (default 6.25%)
+        const feePercentage = ajo.fee_percentage ?? 6.25;
         const grossAmount = ajo.contribution_amount * memberCount;
-        const feeAmount = Math.round(grossAmount * FEE_PERCENTAGE / 100);
+        const feeAmount = Math.round(grossAmount * feePercentage / 100);
         const netAmount = grossAmount - feeAmount;
-        console.log(`Payout: Gross ${grossAmount}, Fee ${feeAmount} (${FEE_PERCENTAGE}%), Net ${netAmount} kobo to ${profile?.full_name || recipientUserId}`);
+        console.log(`Payout: Gross ${grossAmount}, Fee ${feeAmount} (${feePercentage}%), Net ${netAmount} kobo to ${profile?.full_name || recipientUserId}`);
 
         // Generate unique reference
         const reference = `PAYOUT_${ajo.id}_C${currentCycle}_${Date.now()}`;
@@ -273,7 +274,7 @@ Deno.serve(async (req) => {
               cycle: currentCycle,
               member_count: memberCount,
               gross_amount: grossAmount,
-              fee_percentage: FEE_PERCENTAGE,
+              fee_percentage: feePercentage,
               fee_amount: feeAmount,
               net_amount: netAmount,
               transfer_code: paystackResult.data?.transfer_code,
@@ -295,7 +296,7 @@ Deno.serve(async (req) => {
             gross_amount: grossAmount,
             fee_amount: feeAmount,
             net_amount: netAmount,
-            fee_percentage: FEE_PERCENTAGE,
+            fee_percentage: feePercentage,
             cycle: currentCycle,
           });
 
