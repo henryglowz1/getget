@@ -11,7 +11,8 @@ import {
   Wallet,
   Info,
   Globe,
-  Lock
+  Lock,
+  Percent
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -33,7 +34,8 @@ export default function CreateGroup() {
     cycleType: "monthly",
     startDate: "",
     maxMembers: "",
-    isPublic: false
+    isPublic: false,
+    feePercentage: "6.25"
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -68,6 +70,7 @@ export default function CreateGroup() {
           status: "active",
           current_cycle: 1,
           is_public: formData.isPublic,
+          fee_percentage: parseFloat(formData.feePercentage),
         })
         .select()
         .single();
@@ -227,6 +230,28 @@ export default function CreateGroup() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">2-50 members per group</p>
+            </div>
+
+            {/* Platform Fee */}
+            <div className="space-y-2">
+              <Label htmlFor="feePercentage">Platform Fee (%)</Label>
+              <div className="relative">
+                <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="feePercentage"
+                  name="feePercentage"
+                  type="number"
+                  placeholder="6.25"
+                  className="pl-11"
+                  value={formData.feePercentage}
+                  onChange={handleChange}
+                  required
+                  min="0"
+                  max="20"
+                  step="0.01"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Fee deducted from payouts (0-20%)</p>
             </div>
 
             {/* Public Group Toggle */}

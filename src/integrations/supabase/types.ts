@@ -22,6 +22,7 @@ export type Database = {
           current_cycle: number | null
           cycle_type: string
           description: string | null
+          fee_percentage: number | null
           id: string
           is_public: boolean
           max_members: number
@@ -38,6 +39,7 @@ export type Database = {
           current_cycle?: number | null
           cycle_type: string
           description?: string | null
+          fee_percentage?: number | null
           id?: string
           is_public?: boolean
           max_members?: number
@@ -54,6 +56,7 @@ export type Database = {
           current_cycle?: number | null
           cycle_type?: string
           description?: string | null
+          fee_percentage?: number | null
           id?: string
           is_public?: boolean
           max_members?: number
