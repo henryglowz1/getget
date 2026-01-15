@@ -4,8 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScheduledContributionsTable } from "@/components/admin/ScheduledContributionsTable";
 import { FailedPaymentsTable } from "@/components/admin/FailedPaymentsTable";
+import { PlatformFeesSection } from "@/components/admin/PlatformFeesSection";
 import { useAdminContributions } from "@/hooks/useAdminContributions";
-import { Clock, XCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Clock, XCircle, AlertTriangle, CheckCircle2, DollarSign } from "lucide-react";
 
 export default function AdminDashboard() {
   const {
@@ -142,6 +143,10 @@ export default function AdminDashboard() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="fees" className="gap-2">
+              <DollarSign className="w-4 h-4" />
+              Platform Fees
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="scheduled">
@@ -182,6 +187,10 @@ export default function AdminDashboard() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="fees">
+            <PlatformFeesSection />
           </TabsContent>
         </Tabs>
       </div>
