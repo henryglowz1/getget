@@ -23,6 +23,8 @@ import {
   Globe,
   Lock,
   UserPlus,
+  Percent,
+  Banknote,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -154,7 +156,7 @@ export default function GroupDetail() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-card rounded-xl border border-border/50 p-4 shadow-soft">
             <div className="flex items-center gap-2 mb-2">
               <Wallet className="w-5 h-5 text-primary" />
@@ -199,6 +201,40 @@ export default function GroupDetail() {
               {formatCurrency((group.contribution_amount * members.length) / 100)}
             </p>
             <p className="text-sm text-muted-foreground">per cycle</p>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border/50 p-4 shadow-soft">
+            <div className="flex items-center gap-2 mb-2">
+              <Percent className="w-5 h-5 text-primary" />
+              <span className="text-sm text-muted-foreground">Platform Fee</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">
+              {(group as any).fee_percentage ?? 6.25}%
+            </p>
+            <p className="text-sm text-muted-foreground">deducted from payout</p>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border/50 p-4 shadow-soft">
+            <div className="flex items-center gap-2 mb-2">
+              <Banknote className="w-5 h-5 text-primary" />
+              <span className="text-sm text-muted-foreground">Est. Payout</span>
+            </div>
+            {(() => {
+              const grossAmount = (group.contribution_amount * members.length) / 100;
+              const feePercentage = (group as any).fee_percentage ?? 6.25;
+              const feeAmount = grossAmount * feePercentage / 100;
+              const netAmount = grossAmount - feeAmount;
+              return (
+                <>
+                  <p className="text-xl font-bold text-foreground">
+                    {formatCurrency(Math.round(netAmount))}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    after {feePercentage}% fee
+                  </p>
+                </>
+              );
+            })()}
           </div>
         </div>
 
