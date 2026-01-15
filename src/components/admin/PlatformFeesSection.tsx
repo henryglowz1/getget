@@ -2,10 +2,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { usePlatformFees } from "@/hooks/usePlatformFees";
-import { DollarSign, TrendingUp, Users, PieChart } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
+import { DollarSign, TrendingUp, Users, PieChart, CalendarIcon, X } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 function formatCurrency(amountInKobo: number): string {
   return new Intl.NumberFormat("en-NG", {
@@ -23,6 +27,9 @@ export function PlatformFeesSection() {
     totalPayouts,
     feesByGroup,
     feesByDate,
+    dateRange,
+    setDateRange,
+    clearDateRange,
   } = usePlatformFees();
 
   const chartConfig = {
@@ -39,9 +46,12 @@ export function PlatformFeesSection() {
     total_fees_naira: item.total_fees / 100,
   }));
 
+  const hasDateFilter = dateRange.from || dateRange.to;
+
   if (isLoadingFees) {
     return (
       <div className="space-y-6">
+        <Skeleton className="h-10 w-80" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24" />
@@ -54,6 +64,70 @@ export function PlatformFeesSection() {
 
   return (
     <div className="space-y-6">
+      {/* Date Range Filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "justify-start text-left font-normal",
+                !dateRange.from && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange.from ? format(dateRange.from, "MMM dd, yyyy") : "From date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dateRange.from}
+              onSelect={(date) => setDateRange({ ...dateRange, from: date })}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        <span className="text-muted-foreground">to</span>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "justify-start text-left font-normal",
+                !dateRange.to && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange.to ? format(dateRange.to, "MMM dd, yyyy") : "To date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dateRange.to}
+              onSelect={(date) => setDateRange({ ...dateRange, to: date })}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        {hasDateFilter && (
+          <Button variant="ghost" size="sm" onClick={clearDateRange}>
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        )}
+
+        {hasDateFilter && (
+          <span className="text-sm text-muted-foreground ml-2">
+            Showing filtered results
+          </span>
+        )}
+      </div>
+
       {/* Fee Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

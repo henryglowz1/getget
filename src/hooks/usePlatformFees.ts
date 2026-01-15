@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 interface PlatformFee {
   id: string;
@@ -30,17 +31,40 @@ interface FeesByDate {
   count: number;
 }
 
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
 export function usePlatformFees() {
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: undefined,
+    to: undefined,
+  });
+
   const { data: fees, isLoading: isLoadingFees } = useQuery({
-    queryKey: ["platform-fees"],
+    queryKey: ["platform-fees", dateRange.from?.toISOString(), dateRange.to?.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("platform_fees")
         .select(`
           *,
           ajos (name)
         `)
         .order("created_at", { ascending: false });
+
+      // Apply date filters if set
+      if (dateRange.from) {
+        query = query.gte("created_at", dateRange.from.toISOString());
+      }
+      if (dateRange.to) {
+        // Add one day to include the entire "to" date
+        const toDate = new Date(dateRange.to);
+        toDate.setDate(toDate.getDate() + 1);
+        query = query.lt("created_at", toDate.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as PlatformFee[];
@@ -74,7 +98,7 @@ export function usePlatformFees() {
       )
     : [];
 
-  // Group fees by date (last 30 days)
+  // Group fees by date
   const feesByDate: FeesByDate[] = fees
     ? Object.values(
         fees.reduce((acc, fee) => {
@@ -93,6 +117,10 @@ export function usePlatformFees() {
       ).sort((a, b) => a.date.localeCompare(b.date))
     : [];
 
+  const clearDateRange = () => {
+    setDateRange({ from: undefined, to: undefined });
+  };
+
   return {
     fees,
     isLoadingFees,
@@ -101,5 +129,8 @@ export function usePlatformFees() {
     totalPayouts,
     feesByGroup,
     feesByDate,
+    dateRange,
+    setDateRange,
+    clearDateRange,
   };
 }
