@@ -7,6 +7,8 @@ import { Wallet, Mail, Lock, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { TwoFactorVerify } from "@/components/auth/TwoFactorVerify";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,14 +18,18 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // 2FA states
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
   const redirectUrl = searchParams.get("redirect");
 
   useEffect(() => {
-    if (user) {
+    if (user && !requires2FA) {
       navigate(redirectUrl || "/dashboard");
     }
-  }, [user, navigate, redirectUrl]);
+  }, [user, navigate, redirectUrl, requires2FA]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,12 +49,89 @@ export default function Login() {
       return;
     }
 
+    // Check if user has 2FA enabled
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    
+    if (authUser) {
+      try {
+        const { data, error: checkError } = await supabase.functions.invoke("check-2fa-status", {
+          body: { user_id: authUser.id },
+        });
+
+        if (!checkError && data?.success && data?.data?.isEnabled) {
+          // User has 2FA enabled, sign out and show 2FA prompt
+          await supabase.auth.signOut();
+          setPendingUserId(authUser.id);
+          setRequires2FA(true);
+          setIsLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Error checking 2FA status:", err);
+      }
+    }
+
     toast({
       title: "Welcome back!",
       description: "You've successfully signed in.",
     });
+    setIsLoading(false);
     navigate(redirectUrl || "/dashboard");
   };
+
+  const handle2FASuccess = async () => {
+    // 2FA verified, complete the sign in
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      toast({
+        title: "Sign in failed",
+        description: error.message,
+        variant: "destructive"
+      });
+      setRequires2FA(false);
+      setPendingUserId(null);
+      return;
+    }
+
+    toast({
+      title: "Welcome back!",
+      description: "You've successfully signed in with 2FA.",
+    });
+    setRequires2FA(false);
+    setPendingUserId(null);
+    navigate(redirectUrl || "/dashboard");
+  };
+
+  const handle2FACancel = () => {
+    setRequires2FA(false);
+    setPendingUserId(null);
+    setPassword("");
+  };
+
+  // Show 2FA verification screen
+  if (requires2FA && pendingUserId) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        
+        <div className="min-h-screen flex items-center justify-center pt-16 px-4">
+          <div className="w-full max-w-md">
+            <div className="bg-card rounded-2xl border border-border/50 shadow-card p-6 lg:p-8">
+              <TwoFactorVerify
+                userId={pendingUserId}
+                purpose="login"
+                onSuccess={handle2FASuccess}
+                onCancel={handle2FACancel}
+                title="Two-Factor Authentication"
+                description="Enter the code from your authenticator app to sign in"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

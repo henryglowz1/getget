@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.verify-bank-account]
 verify_jwt = false
+
+[functions.totp-setup]
+verify_jwt = false
+
+[functions.totp-verify]
+verify_jwt = false
+
+[functions.check-2fa-status]
+verify_jwt = false

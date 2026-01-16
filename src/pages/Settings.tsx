@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ReferralSection } from "@/components/settings/ReferralSection";
+import { TwoFactorSection } from "@/components/settings/TwoFactorSection";
 import { 
   User, 
   Mail, 
   Phone, 
   Building2,
-  Shield,
   Bell,
   Save
 } from "lucide-react";
@@ -183,22 +183,8 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Security */}
-            <div className="bg-card rounded-xl border border-border/50 shadow-soft p-6">
-              <h2 className="font-display font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                Security
-              </h2>
-              
-              <div className="space-y-4">
-                <Button type="button" variant="outline" className="w-full justify-start">
-                  Change Password
-                </Button>
-                <Button type="button" variant="outline" className="w-full justify-start">
-                  Enable Two-Factor Authentication
-                </Button>
-              </div>
-            </div>
+            {/* Two-Factor Authentication */}
+            <TwoFactorSection />
 
             {/* Notifications */}
             <div className="bg-card rounded-xl border border-border/50 shadow-soft p-6">

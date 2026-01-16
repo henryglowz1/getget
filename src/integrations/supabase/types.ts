@@ -497,6 +497,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_two_factor: {
+        Row: {
+          backup_codes: string[] | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          totp_secret: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_codes?: string[] | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          totp_secret: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backup_codes?: string[] | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          totp_secret?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallet_transactions: {
         Row: {
           amount: number
@@ -577,6 +607,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_2fa_enabled: { Args: { p_user_id: string }; Returns: boolean }
       decrement_wallet_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: {
