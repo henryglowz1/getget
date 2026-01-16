@@ -10,6 +10,9 @@ import { useLinkedBanks } from "@/hooks/useLinkedBanks";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { TwoFactorVerify } from "@/components/auth/TwoFactorVerify";
+import { check2FAStatus } from "@/hooks/useTwoFactor";
 
 interface WithdrawModalProps {
   open: boolean;
@@ -19,6 +22,7 @@ interface WithdrawModalProps {
 const PRESET_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
 export function WithdrawModal({ open, onOpenChange }: WithdrawModalProps) {
+  const { user } = useAuth();
   const { data: linkedBanks, isLoading: banksLoading } = useLinkedBanks();
   const { data: wallet } = useWallet();
   const queryClient = useQueryClient();
@@ -26,6 +30,7 @@ export function WithdrawModal({ open, onOpenChange }: WithdrawModalProps) {
   const [amount, setAmount] = useState("");
   const [selectedBankId, setSelectedBankId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
 
   const selectedBank = linkedBanks?.find(b => b.id === selectedBankId);
   const walletBalanceNaira = wallet ? wallet.balance / 100 : 0;
@@ -65,6 +70,20 @@ export function WithdrawModal({ open, onOpenChange }: WithdrawModalProps) {
       return;
     }
 
+    // Check if user has 2FA enabled
+    if (user) {
+      const has2FA = await check2FAStatus(user.id);
+      if (has2FA) {
+        setRequires2FA(true);
+        return;
+      }
+    }
+
+    // Proceed with withdrawal
+    await processWithdrawal();
+  };
+
+  const processWithdrawal = async () => {
     setIsLoading(true);
 
     try {
@@ -116,7 +135,34 @@ export function WithdrawModal({ open, onOpenChange }: WithdrawModalProps) {
     return new Intl.NumberFormat("en-NG").format(num);
   };
 
+  const handle2FASuccess = () => {
+    setRequires2FA(false);
+    processWithdrawal();
+  };
+
+  const handle2FACancel = () => {
+    setRequires2FA(false);
+  };
+
   const hasLinkedBanks = linkedBanks && linkedBanks.length > 0;
+
+  // Show 2FA verification
+  if (requires2FA && user) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <TwoFactorVerify
+            userId={user.id}
+            purpose="withdrawal"
+            onSuccess={handle2FASuccess}
+            onCancel={handle2FACancel}
+            title="Confirm Withdrawal"
+            description="Enter your 2FA code to authorize this withdrawal"
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
