@@ -144,6 +144,33 @@ Deno.serve(async (req: Request) => {
           amount: transactionData.amount,
           description: 'Wallet funding via Paystack',
         });
+
+        // Process referral reward for first-time wallet funding
+        try {
+          // Check if user has a pending referral
+          const { data: pendingReferral } = await supabaseAdmin
+            .from('referrals')
+            .select('id')
+            .eq('referred_user_id', user.id)
+            .eq('status', 'pending')
+            .maybeSingle();
+
+          if (pendingReferral) {
+            console.log('Processing referral reward for user:', user.id);
+            // Call the database function to process the referral reward
+            const { error: rewardError } = await supabaseAdmin
+              .rpc('process_referral_reward', { p_referred_user_id: user.id });
+
+            if (rewardError) {
+              console.error('Error processing referral reward:', rewardError);
+            } else {
+              console.log('Referral reward processed successfully');
+            }
+          }
+        } catch (refError) {
+          console.error('Error checking/processing referral:', refError);
+          // Don't fail the payment verification if referral processing fails
+        }
       } else {
         // Card tokenization - log the verification charge
         const { error: ledgerError } = await supabaseAdmin

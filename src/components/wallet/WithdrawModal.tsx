@@ -87,12 +87,13 @@ export function WithdrawModal({ open, onOpenChange }: WithdrawModalProps) {
     setIsLoading(true);
 
     try {
+      const numericAmount = parseFloat(amount);
       const amountInKobo = Math.round(numericAmount * 100);
 
       const { data, error } = await supabase.functions.invoke("initiate-transfer", {
         body: {
           amount: amountInKobo,
-          recipient_code: selectedBank.recipient_code,
+          recipient_code: selectedBank?.recipient_code,
           reason: "Wallet withdrawal",
         },
       });
@@ -107,7 +108,7 @@ export function WithdrawModal({ open, onOpenChange }: WithdrawModalProps) {
 
       toast({
         title: "Withdrawal initiated",
-        description: `₦${formatDisplayAmount(amount)} is being transferred to ${selectedBank.bank_name}`,
+        description: `₦${formatDisplayAmount(amount)} is being transferred to ${selectedBank?.bank_name}`,
       });
 
       // Invalidate wallet query to refresh balance

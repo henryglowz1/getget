@@ -85,19 +85,33 @@ export default function Register() {
         const { data: referrerProfile } = await supabase
           .from("profiles")
           .select("user_id")
-          .eq("referral_code", referralCode)
+          .eq("referral_code", referralCode.toUpperCase())
           .single();
 
         if (referrerProfile) {
-          // Create referral record
+          // Create referral record with reward amount (₦200 = 20000 kobo)
           await supabase
             .from("referrals")
             .insert({
               referrer_id: referrerProfile.user_id,
               referred_user_id: result.data.user.id,
-              referral_code: referralCode,
+              referral_code: referralCode.toUpperCase(),
               status: "pending",
+              reward_amount: 20000, // ₦200 in kobo
             });
+          
+          // Also update the new user's profile with referred_by
+          await supabase
+            .from("profiles")
+            .update({ referred_by: referrerProfile.user_id })
+            .eq("user_id", result.data.user.id);
+            
+          toast({
+            title: "Referral applied!",
+            description: "Your referrer will receive ₦200 when you fund your wallet.",
+          });
+        } else {
+          console.log("Invalid referral code:", referralCode);
         }
       } catch (err) {
         console.error("Failed to create referral record:", err);
