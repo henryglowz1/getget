@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Navbar } from "@/components/layout/Navbar";
-import { Wallet, Mail, Lock, User, Phone, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Wallet, Mail, Lock, User, Phone, ArrowRight, CheckCircle2, Gift } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,11 +20,15 @@ export default function Register() {
     email: "",
     phone: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    manualReferralCode: ""
   });
 
-  const referralCode = searchParams.get("ref");
+  const urlReferralCode = searchParams.get("ref");
   const redirectUrl = searchParams.get("redirect");
+  
+  // Use URL referral code if available, otherwise use manually entered code
+  const referralCode = urlReferralCode || formData.manualReferralCode.trim();
 
   useEffect(() => {
     if (user) {
@@ -143,9 +147,9 @@ export default function Register() {
             <p className="text-muted-foreground">
               Start your automated savings journey today
             </p>
-            {referralCode && (
+            {urlReferralCode && (
               <p className="text-sm text-primary mt-2">
-                🎉 Using referral code: <span className="font-mono font-bold">{referralCode}</span>
+                🎉 Using referral code: <span className="font-mono font-bold">{urlReferralCode}</span>
               </p>
             )}
           </div>
@@ -237,6 +241,29 @@ export default function Register() {
                   />
                 </div>
               </div>
+
+              {/* Manual Referral Code Input - only show if no URL referral code */}
+              {!urlReferralCode && (
+                <div className="space-y-2">
+                  <Label htmlFor="manualReferralCode">Referral Code (Optional)</Label>
+                  <div className="relative">
+                    <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="manualReferralCode"
+                      name="manualReferralCode"
+                      type="text"
+                      placeholder="Enter referral code"
+                      className="pl-11 uppercase"
+                      value={formData.manualReferralCode}
+                      onChange={handleChange}
+                      maxLength={8}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Have a friend's referral code? Enter it to give them a bonus!
+                  </p>
+                </div>
+              )}
 
               <Button 
                 type="submit" 
