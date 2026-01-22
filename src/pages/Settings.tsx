@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ReferralSection } from "@/components/settings/ReferralSection";
+import { ReferralLeaderboard } from "@/components/settings/ReferralLeaderboard";
 import { TwoFactorSection } from "@/components/settings/TwoFactorSection";
 import { 
   User, 
@@ -81,6 +82,9 @@ export default function Settings() {
         <div className="space-y-8">
           {/* Referral Section */}
           <ReferralSection />
+
+          {/* Referral Leaderboard */}
+          <ReferralLeaderboard />
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Profile Section */}
