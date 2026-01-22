@@ -14,10 +14,13 @@ import {
 import { Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
+import { useUsernameRequired } from "@/hooks/useUsernameRequired";
+import { UsernameSetupModal } from "@/components/settings/UsernameSetupModal";
 
 export default function Dashboard() {
   const { profile } = useProfile();
   const { data: wallet } = useWallet();
+  const { needsUsername, refetch: refetchUsername } = useUsernameRequired();
 
   const firstName = profile?.full_name?.split(" ")[0] || "there";
   const walletBalance = wallet?.balance || 0;
@@ -61,6 +64,9 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      {/* Username Setup Modal */}
+      <UsernameSetupModal open={needsUsername} onComplete={refetchUsername} />
+      
       <div className="space-y-8 animate-fade-in">
         {/* Welcome Banner */}
         <div className="bg-gradient-primary rounded-2xl p-6 lg:p-8 text-primary-foreground relative overflow-hidden">

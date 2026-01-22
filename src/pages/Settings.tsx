@@ -11,15 +11,19 @@ import {
   Phone, 
   Building2,
   Bell,
-  Save
+  Save,
+  AtSign,
+  Lock
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useProfile } from "@/hooks/useProfile";
+import { useUsernameRequired } from "@/hooks/useUsernameRequired";
 
 export default function Settings() {
   const { toast } = useToast();
   const { profile, isLoading: profileLoading, updateProfile } = useProfile();
+  const { username } = useUsernameRequired();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -103,6 +107,22 @@ export default function Settings() {
                     value={formData.name}
                     onChange={handleChange}
                   />
+                </div>
+
+                {/* Username - Read only */}
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="username"
+                      value={username || "Not set"}
+                      className="pl-11"
+                      disabled
+                    />
+                    <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Username cannot be changed once set</p>
                 </div>
 
                 <div className="space-y-2">

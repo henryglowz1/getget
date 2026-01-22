@@ -10,9 +10,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { GroupInvite } from "@/hooks/useGroupDetail";
-import { Copy, Link, Mail, Plus, Trash2, UserPlus } from "lucide-react";
+import { Copy, Link, Mail, Plus, Trash2, UserPlus, AtSign, Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InviteMemberModalProps {
   groupId: string;
@@ -34,11 +41,14 @@ export function InviteMemberModal({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const inviteLink = `${window.location.origin}/invite/${groupId}`;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
@@ -58,6 +68,90 @@ export function InviteMemberModal({
       });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleUsernameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username) return;
+
+    setIsSearching(true);
+    try {
+      const cleanUsername = username.replace("@", "").toLowerCase().trim();
+      
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("email, username")
+        .eq("username", cleanUsername)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!profile) {
+        toast({
+          title: "User not found",
+          description: `No user found with username @${cleanUsername}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await onInvite(profile.email);
+      setUsername("");
+      toast({
+        title: "Invitation sent!",
+        description: `An invite has been sent to @${cleanUsername}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to send invite",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone) return;
+
+    setIsSearching(true);
+    try {
+      const cleanPhone = phone.replace(/\D/g, "").trim();
+      
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("email, phone")
+        .eq("phone", cleanPhone)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!profile) {
+        toast({
+          title: "User not found",
+          description: `No user found with phone number ${phone}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await onInvite(profile.email);
+      setPhone("");
+      toast({
+        title: "Invitation sent!",
+        description: `An invite has been sent to the user with phone ${phone}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to send invite",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -96,34 +190,96 @@ export function InviteMemberModal({
         <DialogHeader>
           <DialogTitle>Invite to {groupName}</DialogTitle>
           <DialogDescription>
-            Send an invite by email or share the group link
+            Find members by username, phone, email, or share the group link
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Email invite form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="member@example.com"
-                    className="pl-10"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+          <Tabs defaultValue="username" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="username" className="text-xs">
+                <AtSign className="w-3 h-3 mr-1" />
+                Username
+              </TabsTrigger>
+              <TabsTrigger value="phone" className="text-xs">
+                <Phone className="w-3 h-3 mr-1" />
+                Phone
+              </TabsTrigger>
+              <TabsTrigger value="email" className="text-xs">
+                <Mail className="w-3 h-3 mr-1" />
+                Email
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="username" className="mt-4">
+              <form onSubmit={handleUsernameSubmit} className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="username"
+                      className="pl-10 lowercase"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={isSearching || !username}>
+                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  </Button>
                 </div>
-                <Button type="submit" disabled={isSending || !email}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </form>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="phone" className="mt-4">
+              <form onSubmit={handlePhoneSubmit} className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="08012345678"
+                      className="pl-10"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={isSearching || !phone}>
+                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="email" className="mt-4">
+              <form onSubmit={handleEmailSubmit} className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="member@example.com"
+                      className="pl-10"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" disabled={isSending || !email}>
+                    {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+          </Tabs>
 
           {/* Share link */}
           <div className="space-y-2">
