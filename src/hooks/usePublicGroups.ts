@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendNotification } from "@/lib/notifications";
 
 export interface PublicGroup {
   id: string;
@@ -201,6 +202,13 @@ export function useGroupJoinRequests(groupId: string | undefined) {
 
       if (requestError) throw requestError;
 
+      // Get group name for notification
+      const { data: group } = await supabase
+        .from("ajos")
+        .select("name")
+        .eq("id", groupId)
+        .single();
+
       // Get current member count to determine position
       const { count } = await supabase
         .from("memberships")
@@ -231,6 +239,15 @@ export function useGroupJoinRequests(groupId: string | undefined) {
         .eq("id", requestId);
 
       if (updateError) throw updateError;
+
+      // Send notification to the user
+      await sendNotification({
+        userId: request.user_id,
+        type: "group_joined",
+        title: "Request Approved! 🎉",
+        message: `Your request to join "${group?.name || "the group"}" has been approved. You're now a member!`,
+        data: { groupId, groupName: group?.name },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-join-requests", groupId] });
@@ -240,7 +257,21 @@ export function useGroupJoinRequests(groupId: string | undefined) {
 
   const rejectRequest = useMutation({
     mutationFn: async (requestId: string) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!user || !groupId) throw new Error("Not authenticated");
+
+      // Get request details first
+      const { data: request } = await supabase
+        .from("join_requests")
+        .select("user_id")
+        .eq("id", requestId)
+        .single();
+
+      // Get group name for notification
+      const { data: group } = await supabase
+        .from("ajos")
+        .select("name")
+        .eq("id", groupId)
+        .single();
 
       const { error } = await supabase
         .from("join_requests")
@@ -252,6 +283,18 @@ export function useGroupJoinRequests(groupId: string | undefined) {
         .eq("id", requestId);
 
       if (error) throw error;
+
+      // Send notification to the user
+      if (request) {
+        await sendNotification({
+          userId: request.user_id,
+          type: "join_request",
+          title: "Join Request Update",
+          message: `Your request to join "${group?.name || "the group"}" was not approved at this time.`,
+          data: { groupId, groupName: group?.name },
+          sendEmail: false, // Don't send email for rejections
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-join-requests", groupId] });

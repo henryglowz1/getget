@@ -5,12 +5,12 @@ import { Label } from "@/components/ui/label";
 import { ReferralSection } from "@/components/settings/ReferralSection";
 import { ReferralLeaderboard } from "@/components/settings/ReferralLeaderboard";
 import { TwoFactorSection } from "@/components/settings/TwoFactorSection";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { 
   User, 
   Mail, 
   Phone, 
   Building2,
-  Bell,
   Save,
   AtSign,
   Lock
@@ -211,38 +211,7 @@ export default function Settings() {
             <TwoFactorSection />
 
             {/* Notifications */}
-            <div className="bg-card rounded-xl border border-border/50 shadow-soft p-6">
-              <h2 className="font-display font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-primary" />
-                Notifications
-              </h2>
-              
-              <div className="space-y-4">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <p className="font-medium text-foreground">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">Receive updates via email</p>
-                  </div>
-                  <input type="checkbox" defaultChecked className="w-5 h-5 accent-primary" />
-                </label>
-                
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <p className="font-medium text-foreground">SMS Alerts</p>
-                    <p className="text-sm text-muted-foreground">Get SMS for important transactions</p>
-                  </div>
-                  <input type="checkbox" defaultChecked className="w-5 h-5 accent-primary" />
-                </label>
-                
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <p className="font-medium text-foreground">Contribution Reminders</p>
-                    <p className="text-sm text-muted-foreground">Remind me before debit dates</p>
-                  </div>
-                  <input type="checkbox" defaultChecked className="w-5 h-5 accent-primary" />
-                </label>
-              </div>
-            </div>
+            <NotificationSettings />
 
             {/* Save Button */}
             <Button type="submit" variant="hero" size="lg" disabled={isLoading || profileLoading}>

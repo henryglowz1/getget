@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   ChevronDown,
   ShieldCheck
 } from "lucide-react";
@@ -18,6 +17,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 
 const sidebarLinks = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -75,10 +75,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <span className="font-display font-bold text-lg">AjoConnect</span>
           </Link>
         </div>
-        <button className="p-2 text-foreground hover:bg-muted rounded-lg transition-colors relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-        </button>
+        <NotificationDropdown />
       </header>
 
       {/* Sidebar Overlay */}
@@ -166,10 +163,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {allLinks.find((l) => l.to === location.pathname)?.label || "Dashboard"}
           </h1>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-            </button>
+            <NotificationDropdown />
           </div>
         </header>
 
