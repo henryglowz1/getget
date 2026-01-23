@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +7,81 @@ const corsHeaders = {
 
 interface VerifyPaymentRequest {
   reference: string;
+}
+
+interface NotificationPayload {
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+async function sendNotificationInternal(
+  supabaseAdmin: SupabaseClient,
+  payload: NotificationPayload
+) {
+  // Insert in-app notification
+  await supabaseAdmin.from('notifications').insert({
+    user_id: payload.user_id,
+    type: payload.type,
+    title: payload.title,
+    message: payload.message,
+    data: payload.data || {},
+  });
+
+  // Get user profile for email
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('email, full_name')
+    .eq('user_id', payload.user_id)
+    .single();
+
+  // Get user preferences
+  const { data: prefs } = await supabaseAdmin
+    .from('notification_preferences')
+    .select('email_enabled')
+    .eq('user_id', payload.user_id)
+    .maybeSingle();
+
+  // Send email if enabled
+  if (profile && (prefs?.email_enabled !== false)) {
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (resendApiKey) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${resendApiKey}`,
+          },
+          body: JSON.stringify({
+            from: 'AjoConnect <onboarding@resend.dev>',
+            to: [profile.email],
+            subject: `${payload.title} - AjoConnect`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #10B981;">${payload.title}</h1>
+                <p>Hi ${profile.full_name || 'there'},</p>
+                <p>${payload.message}</p>
+                <p style="margin-top: 24px;">
+                  <a href="https://getget.lovable.app/dashboard" 
+                     style="background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">
+                    Go to Dashboard
+                  </a>
+                </p>
+                <p style="color: #6B7280; margin-top: 24px; font-size: 14px;">
+                  — The AjoConnect Team
+                </p>
+              </div>
+            `,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+      }
+    }
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -145,12 +220,25 @@ Deno.serve(async (req: Request) => {
           description: 'Wallet funding via Paystack',
         });
 
+        // Send notification for successful wallet funding
+        try {
+          await sendNotificationInternal(supabaseAdmin, {
+            user_id: user.id,
+            type: 'payment_success',
+            title: 'Wallet Funded Successfully! 💰',
+            message: `₦${(transactionData.amount / 100).toLocaleString()} has been added to your wallet.`,
+            data: { amount: transactionData.amount, reference },
+          });
+        } catch (notifError) {
+          console.error('Error sending notification:', notifError);
+        }
+
         // Process referral reward for first-time wallet funding
         try {
           // Check if user has a pending referral
           const { data: pendingReferral } = await supabaseAdmin
             .from('referrals')
-            .select('id')
+            .select('id, referrer_id, reward_amount')
             .eq('referred_user_id', user.id)
             .eq('status', 'pending')
             .maybeSingle();
@@ -165,6 +253,14 @@ Deno.serve(async (req: Request) => {
               console.error('Error processing referral reward:', rewardError);
             } else {
               console.log('Referral reward processed successfully');
+              // Notify the referrer about their bonus
+              await sendNotificationInternal(supabaseAdmin, {
+                user_id: pendingReferral.referrer_id,
+                type: 'referral_bonus',
+                title: 'Referral Bonus Earned! 🎁',
+                message: `Congratulations! You earned ₦${((pendingReferral.reward_amount || 20000) / 100).toLocaleString()} for referring a friend who just made their first deposit.`,
+                data: { amount: pendingReferral.reward_amount },
+              });
             }
           }
         } catch (refError) {

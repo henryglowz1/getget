@@ -302,6 +302,78 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          contribution_reminders: boolean
+          created_at: string
+          email_enabled: boolean
+          group_updates: boolean
+          id: string
+          payment_alerts: boolean
+          push_enabled: boolean
+          push_subscription: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contribution_reminders?: boolean
+          created_at?: string
+          email_enabled?: boolean
+          group_updates?: boolean
+          id?: string
+          payment_alerts?: boolean
+          push_enabled?: boolean
+          push_subscription?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contribution_reminders?: boolean
+          created_at?: string
+          email_enabled?: boolean
+          group_updates?: boolean
+          id?: string
+          payment_alerts?: boolean
+          push_enabled?: boolean
+          push_subscription?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_fees: {
         Row: {
           ajo_id: string | null
