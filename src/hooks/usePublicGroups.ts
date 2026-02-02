@@ -16,6 +16,7 @@ export interface PublicGroup {
   creator_id: string | null;
   memberCount: number;
   hasRequested: boolean;
+  wasRejected: boolean;
   isMember: boolean;
 }
 
@@ -63,6 +64,7 @@ export function usePublicGroups() {
           // Check if user is already a member
           let isMember = false;
           let hasRequested = false;
+          let wasRejected = false;
 
           if (user) {
             const { data: membership } = await supabase
@@ -77,15 +79,28 @@ export function usePublicGroups() {
 
             // Check if user has pending request (only pending blocks new requests)
             if (!isMember) {
-              const { data: request } = await supabase
+              const { data: pendingRequest } = await supabase
                 .from("join_requests")
-                .select("id, status")
+                .select("id")
                 .eq("ajo_id", group.id)
                 .eq("user_id", user.id)
                 .eq("status", "pending")
                 .maybeSingle();
 
-              hasRequested = !!request;
+              hasRequested = !!pendingRequest;
+
+              // Check if user was previously rejected
+              if (!hasRequested) {
+                const { data: rejectedRequest } = await supabase
+                  .from("join_requests")
+                  .select("id")
+                  .eq("ajo_id", group.id)
+                  .eq("user_id", user.id)
+                  .eq("status", "rejected")
+                  .maybeSingle();
+
+                wasRejected = !!rejectedRequest;
+              }
             }
           }
 
@@ -94,6 +109,7 @@ export function usePublicGroups() {
             memberCount: memberCount || 0,
             isMember,
             hasRequested,
+            wasRejected,
           } as PublicGroup;
         })
       );

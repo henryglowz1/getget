@@ -22,6 +22,8 @@ import {
   Clock,
   CheckCircle2,
   Loader2,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 import { usePublicGroups, useJoinRequest } from "@/hooks/usePublicGroups";
@@ -194,83 +196,110 @@ export default function BrowseGroups() {
                   <span className="text-sm font-medium">Group Full</span>
                 </div>
               ) : (
-                <Dialog
-                  open={selectedGroup === group.id}
-                  onOpenChange={(open) => {
-                    setSelectedGroup(open ? group.id : null);
-                    if (!open) setMessage("");
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button variant="hero" className="w-full">
-                      Request to Join
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Join {group.name}</DialogTitle>
-                      <DialogDescription>
-                        Send a request to join this group. The group admin will
-                        review your request.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Contribution
-                          </span>
-                          <span className="font-medium">
-                            {formatCurrency(group.contribution_amount)} /{" "}
-                            {group.cycle_type}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Members
-                          </span>
-                          <span className="font-medium">
-                            {group.memberCount} / {group.max_members}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="message">
-                          Message (optional)
-                        </Label>
-                        <Textarea
-                          id="message"
-                          placeholder="Introduce yourself to the group admin..."
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          rows={3}
-                        />
-                      </div>
+                <div className="space-y-2">
+                  {group.wasRejected && (
+                    <div className="flex items-center gap-2 text-xs text-warning-foreground bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+                      <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Previously declined — you can request again</span>
                     </div>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedGroup(null)}
+                  )}
+                  <Dialog
+                    open={selectedGroup === group.id}
+                    onOpenChange={(open) => {
+                      setSelectedGroup(open ? group.id : null);
+                      if (!open) setMessage("");
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant={group.wasRejected ? "outline" : "hero"} 
+                        className="w-full"
                       >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="hero"
-                        onClick={handleJoinRequest}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
+                        {group.wasRejected ? (
                           <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Sending...
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Request Again
                           </>
                         ) : (
-                          "Send Request"
+                          "Request to Join"
                         )}
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Join {group.name}</DialogTitle>
+                        <DialogDescription>
+                          {group.wasRejected
+                            ? "Your previous request was declined. Send a new request to try again."
+                            : "Send a request to join this group. The group admin will review your request."}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        {group.wasRejected && (
+                          <div className="flex items-start gap-3 text-sm text-warning-foreground bg-warning/10 border border-warning/20 rounded-lg p-3">
+                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <p>
+                              Consider adding a message explaining why you'd like to join to improve your chances.
+                            </p>
+                          </div>
+                        )}
+                        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Contribution
+                            </span>
+                            <span className="font-medium">
+                              {formatCurrency(group.contribution_amount)} /{" "}
+                              {group.cycle_type}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Members
+                            </span>
+                            <span className="font-medium">
+                              {group.memberCount} / {group.max_members}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="message">
+                            Message {group.wasRejected ? "(recommended)" : "(optional)"}
+                          </Label>
+                          <Textarea
+                            id="message"
+                            placeholder="Introduce yourself to the group admin..."
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedGroup(null)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="hero"
+                          onClick={handleJoinRequest}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            "Send Request"
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               )}
             </div>
           ))}
