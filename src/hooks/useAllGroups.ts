@@ -65,7 +65,7 @@ export function useAllGroups() {
         (group, index, self) => index === self.findIndex((g) => g.id === group.id)
       );
 
-      // Get pending join requests
+      // Get pending join requests (only pending blocks new requests, rejected allows re-requesting)
       const { data: pendingRequests, error: requestsError } = await supabase
         .from("join_requests")
         .select("ajo_id")
