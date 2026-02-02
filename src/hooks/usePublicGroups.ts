@@ -17,6 +17,7 @@ export interface PublicGroup {
   memberCount: number;
   hasRequested: boolean;
   wasRejected: boolean;
+  rejectionReason: string | null;
   isMember: boolean;
 }
 
@@ -65,6 +66,7 @@ export function usePublicGroups() {
           let isMember = false;
           let hasRequested = false;
           let wasRejected = false;
+          let rejectionReason: string | null = null;
 
           if (user) {
             const { data: membership } = await supabase
@@ -89,17 +91,20 @@ export function usePublicGroups() {
 
               hasRequested = !!pendingRequest;
 
-              // Check if user was previously rejected
+              // Check if user was previously rejected (get the reason too)
               if (!hasRequested) {
                 const { data: rejectedRequest } = await supabase
                   .from("join_requests")
-                  .select("id")
+                  .select("id, rejection_reason")
                   .eq("ajo_id", group.id)
                   .eq("user_id", user.id)
                   .eq("status", "rejected")
+                  .order("created_at", { ascending: false })
+                  .limit(1)
                   .maybeSingle();
 
                 wasRejected = !!rejectedRequest;
+                rejectionReason = rejectedRequest?.rejection_reason || null;
               }
             }
           }
@@ -110,6 +115,7 @@ export function usePublicGroups() {
             isMember,
             hasRequested,
             wasRejected,
+            rejectionReason,
           } as PublicGroup;
         })
       );
@@ -272,7 +278,13 @@ export function useGroupJoinRequests(groupId: string | undefined) {
   });
 
   const rejectRequest = useMutation({
-    mutationFn: async (requestId: string) => {
+    mutationFn: async ({
+      requestId,
+      reason,
+    }: {
+      requestId: string;
+      reason?: string;
+    }) => {
       if (!user || !groupId) throw new Error("Not authenticated");
 
       // Get request details first
@@ -295,19 +307,23 @@ export function useGroupJoinRequests(groupId: string | undefined) {
           status: "rejected",
           reviewed_at: new Date().toISOString(),
           reviewed_by: user.id,
+          rejection_reason: reason || null,
         })
         .eq("id", requestId);
 
       if (error) throw error;
 
-      // Send notification to the user
+      // Send notification to the user with the reason
       if (request) {
+        const reasonText = reason
+          ? `\n\nReason: "${reason}"`
+          : "";
         await sendNotification({
           userId: request.user_id,
           type: "join_request",
           title: "Join Request Update",
-          message: `Your request to join "${group?.name || "the group"}" was not approved at this time.`,
-          data: { groupId, groupName: group?.name },
+          message: `Your request to join "${group?.name || "the group"}" was not approved at this time.${reasonText}\n\nYou can submit a new request if you'd like to try again.`,
+          data: { groupId, groupName: group?.name, rejectionReason: reason },
           sendEmail: false, // Don't send email for rejections
         });
       }

@@ -198,9 +198,17 @@ export default function BrowseGroups() {
               ) : (
                 <div className="space-y-2">
                   {group.wasRejected && (
-                    <div className="flex items-center gap-2 text-xs text-warning-foreground bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
-                      <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>Previously declined — you can request again</span>
+                    <div className="text-xs text-warning-foreground bg-warning/10 border border-warning/20 rounded-lg px-3 py-2 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="font-medium">Previously declined</span>
+                      </div>
+                      {group.rejectionReason && (
+                        <p className="text-muted-foreground pl-5">
+                          "{group.rejectionReason}"
+                        </p>
+                      )}
+                      <p className="pl-5 text-muted-foreground">You can request again</p>
                     </div>
                   )}
                   <Dialog
