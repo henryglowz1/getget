@@ -75,11 +75,11 @@ export function usePublicGroups() {
 
             isMember = !!membership;
 
-            // Check if user has pending request
+            // Check if user has pending request (only pending blocks new requests)
             if (!isMember) {
               const { data: request } = await supabase
                 .from("join_requests")
-                .select("id")
+                .select("id, status")
                 .eq("ajo_id", group.id)
                 .eq("user_id", user.id)
                 .eq("status", "pending")

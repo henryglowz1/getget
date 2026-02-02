@@ -226,10 +226,10 @@ export default function CreateGroup() {
                   onChange={handleChange}
                   required
                   min="2"
-                  max="50"
+                  max="100"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">2-50 members per group</p>
+              <p className="text-xs text-muted-foreground">2-100 members per group</p>
             </div>
 
             {/* Platform Fee */}
