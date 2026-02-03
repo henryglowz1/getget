@@ -6,6 +6,7 @@ import { ReferralSection } from "@/components/settings/ReferralSection";
 import { ReferralLeaderboard } from "@/components/settings/ReferralLeaderboard";
 import { TwoFactorSection } from "@/components/settings/TwoFactorSection";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { 
   User, 
   Mail, 
@@ -98,62 +99,73 @@ export default function Settings() {
                 Profile Information
               </h2>
               
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                  />
-                </div>
+              <div className="space-y-6">
+                {/* Avatar Upload */}
+                <AvatarUpload
+                  avatarUrl={profile?.avatar_url || null}
+                  fullName={formData.name}
+                  onUpload={async (url) => {
+                    await updateProfile({ avatar_url: url });
+                  }}
+                />
 
-                {/* Username - Read only */}
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <div className="relative">
-                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
                     <Input
-                      id="username"
-                      value={username || "Not set"}
-                      className="pl-11"
-                      disabled
-                    />
-                    <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Username cannot be changed once set</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      className="pl-11"
-                      value={formData.email}
-                      onChange={handleChange}
-                      disabled
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      className="pl-11"
-                      value={formData.phone}
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleChange}
                     />
+                  </div>
+
+                  {/* Username - Read only */}
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <div className="relative">
+                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="username"
+                        value={username || "Not set"}
+                        className="pl-11"
+                        disabled
+                      />
+                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Username cannot be changed once set</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        className="pl-11"
+                        value={formData.email}
+                        onChange={handleChange}
+                        disabled
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        className="pl-11"
+                        value={formData.phone}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

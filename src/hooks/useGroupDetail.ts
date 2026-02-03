@@ -40,7 +40,24 @@ export function useGroupDetail(groupId: string | undefined) {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // Fetch creator profile
+      let creatorProfile = null;
+      if (data.creator_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, username, avatar_url")
+          .eq("user_id", data.creator_id)
+          .single();
+        creatorProfile = profile;
+      }
+
+      return {
+        ...data,
+        creatorName: creatorProfile?.full_name || null,
+        creatorUsername: creatorProfile?.username || null,
+        creatorAvatarUrl: creatorProfile?.avatar_url || null,
+      };
     },
     enabled: !!groupId && !!user,
   });

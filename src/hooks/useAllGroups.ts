@@ -20,6 +20,10 @@ export interface AllGroup {
   progress?: number;
   isMember: boolean;
   hasRequested: boolean;
+  // Creator info
+  creatorName: string | null;
+  creatorUsername: string | null;
+  creatorAvatarUrl: string | null;
 }
 
 export function useAllGroups() {
@@ -76,6 +80,21 @@ export function useAllGroups() {
 
       const requestedGroupIds = pendingRequests?.map((r) => r.ajo_id) || [];
 
+      // Get creator IDs for fetching profiles
+      const creatorIds = uniqueGroups
+        .map((g) => g.creator_id)
+        .filter((id): id is string => id !== null);
+
+      // Fetch creator profiles
+      const { data: creatorProfiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, username, avatar_url")
+        .in("user_id", creatorIds);
+
+      const profilesMap = new Map(
+        (creatorProfiles || []).map((p) => [p.user_id, p])
+      );
+
       // Enrich groups with counts and user status
       const groupsWithDetails = await Promise.all(
         uniqueGroups.map(async (group) => {
@@ -92,6 +111,10 @@ export function useAllGroups() {
             ? Math.round((group.current_cycle / group.max_members) * 100)
             : 0;
 
+          const creatorProfile = group.creator_id
+            ? profilesMap.get(group.creator_id)
+            : null;
+
           return {
             ...group,
             memberCount: count || 0,
@@ -99,6 +122,9 @@ export function useAllGroups() {
             progress,
             isMember,
             hasRequested,
+            creatorName: creatorProfile?.full_name || null,
+            creatorUsername: creatorProfile?.username || null,
+            creatorAvatarUrl: creatorProfile?.avatar_url || null,
           } as AllGroup;
         })
       );

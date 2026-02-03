@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { GroupCreatorBadge } from "@/components/groups/GroupCreatorBadge";
 import { 
   Plus, 
   Search, 
@@ -148,6 +149,11 @@ export default function Groups() {
                       <Users className="w-4 h-4" />
                       {group.memberCount} / {group.max_members}
                     </div>
+                    <GroupCreatorBadge
+                      creatorName={group.creatorName}
+                      creatorUsername={group.creatorUsername}
+                      creatorAvatarUrl={group.creatorAvatarUrl}
+                    />
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
