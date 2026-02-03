@@ -8,6 +8,7 @@ import { InviteMemberModal } from "@/components/groups/InviteMemberModal";
 import { PayContributionModal } from "@/components/groups/PayContributionModal";
 import { ContributionHistory } from "@/components/groups/ContributionHistory";
 import { JoinRequestsPanel } from "@/components/groups/JoinRequestsPanel";
+import { GroupCreatorBadge } from "@/components/groups/GroupCreatorBadge";
 import { useGroupDetail } from "@/hooks/useGroupDetail";
 import { useGroupJoinRequests } from "@/hooks/usePublicGroups";
 import { useAuth } from "@/contexts/AuthContext";
@@ -129,6 +130,12 @@ export default function GroupDetail() {
                   )}
                 </div>
                 <p className="text-muted-foreground">{group.description || "No description"}</p>
+                <GroupCreatorBadge
+                  creatorName={group.creatorName}
+                  creatorUsername={group.creatorUsername}
+                  creatorAvatarUrl={group.creatorAvatarUrl}
+                  size="md"
+                />
               </div>
             </div>
           </div>
