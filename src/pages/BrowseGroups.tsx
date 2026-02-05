@@ -29,6 +29,7 @@ import { useState } from "react";
 import { usePublicGroups, useJoinRequest } from "@/hooks/usePublicGroups";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { GroupCreatorBadge } from "@/components/groups/GroupCreatorBadge";
 
 export default function BrowseGroups() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,6 +149,16 @@ export default function BrowseGroups() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Creator Badge */}
+              <div className="mb-3">
+                <GroupCreatorBadge
+                  creatorName={group.creatorName}
+                  creatorUsername={group.creatorUsername}
+                  creatorAvatarUrl={group.creatorAvatarUrl}
+                  size="sm"
+                />
               </div>
 
               {group.description && (
