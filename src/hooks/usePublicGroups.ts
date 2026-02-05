@@ -19,6 +19,9 @@ export interface PublicGroup {
   wasRejected: boolean;
   rejectionReason: string | null;
   isMember: boolean;
+  creatorName: string | null;
+  creatorUsername: string | null;
+  creatorAvatarUrl: string | null;
 }
 
 export interface JoinRequest {
@@ -116,12 +119,36 @@ export function usePublicGroups() {
             hasRequested,
             wasRejected,
             rejectionReason,
-          } as PublicGroup;
+          };
         })
       );
 
       // Filter out groups user is already a member of
-      return groupsWithDetails.filter((g) => !g.isMember);
+      const filteredGroups = groupsWithDetails.filter((g) => !g.isMember);
+
+      // Fetch creator profiles
+      const creatorIds = [...new Set(filteredGroups.map(g => g.creator_id).filter(Boolean))] as string[];
+      
+      let profilesMap = new Map<string, { full_name: string; username: string | null; avatar_url: string | null }>();
+      
+      if (creatorIds.length > 0) {
+        const { data: creatorProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, username, avatar_url")
+          .in("user_id", creatorIds);
+
+        profilesMap = new Map((creatorProfiles || []).map(p => [p.user_id, p]));
+      }
+
+      return filteredGroups.map(group => {
+        const creatorProfile = group.creator_id ? profilesMap.get(group.creator_id) : null;
+        return {
+          ...group,
+          creatorName: creatorProfile?.full_name || null,
+          creatorUsername: creatorProfile?.username || null,
+          creatorAvatarUrl: creatorProfile?.avatar_url || null,
+        };
+      });
     },
     enabled: !!user,
   });
