@@ -1,7 +1,7 @@
 import { GroupMember } from "@/hooks/useGroupDetail";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Crown, User } from "lucide-react";
+import { Crown, User, AtSign } from "lucide-react";
 
 interface MembersListProps {
   members: GroupMember[];
@@ -62,9 +62,16 @@ export function MembersList({ members, creatorId, currentUserId }: MembersListPr
                   <Badge variant="secondary" className="text-xs">You</Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground truncate">
-                {member.profile?.email}
-              </p>
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                {member.profile?.username ? (
+                  <span className="flex items-center gap-0.5 truncate">
+                    <AtSign className="w-3 h-3" />
+                    {member.profile.username}
+                  </span>
+                ) : (
+                  <span className="truncate">{member.profile?.email}</span>
+                )}
+              </div>
             </div>
 
             <Badge 

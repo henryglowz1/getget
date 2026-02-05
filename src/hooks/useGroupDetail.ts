@@ -12,6 +12,7 @@ export interface GroupMember {
     full_name: string;
     email: string;
     avatar_url: string | null;
+    username?: string | null;
   };
 }
 
@@ -81,13 +82,13 @@ export function useGroupDetail(groupId: string | undefined) {
         (memberships || []).map(async (member) => {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("full_name, email, avatar_url")
+            .select("full_name, email, avatar_url, username")
             .eq("user_id", member.user_id)
             .single();
 
           return {
             ...member,
-            profile: profile || { full_name: "Unknown", email: "", avatar_url: null },
+            profile: profile || { full_name: "Unknown", email: "", avatar_url: null, username: null },
           };
         })
       );
