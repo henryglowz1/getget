@@ -155,6 +155,43 @@ export function useGroupDetail(groupId: string | undefined) {
     },
   });
 
+  const removeMember = useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { error } = await supabase
+        .from("memberships")
+        .delete()
+        .eq("id", membershipId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["group-members", groupId] });
+    },
+  });
+
+  const deleteGroup = useMutation({
+    mutationFn: async () => {
+      if (!groupId) throw new Error("Missing group ID");
+
+      // Delete related data first (invites, join requests, memberships)
+      await supabase.from("group_invites").delete().eq("ajo_id", groupId);
+      await supabase.from("join_requests").delete().eq("ajo_id", groupId);
+      await supabase.from("memberships").delete().eq("ajo_id", groupId);
+
+      // Delete the group itself
+      const { error } = await supabase
+        .from("ajos")
+        .delete()
+        .eq("id", groupId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["all-groups"] });
+    },
+  });
+
   const isCreator = groupQuery.data?.creator_id === user?.id;
   const isMember = membersQuery.data?.some((m) => m.user_id === user?.id);
 
@@ -167,5 +204,7 @@ export function useGroupDetail(groupId: string | undefined) {
     isMember,
     createInvite,
     deleteInvite,
+    removeMember,
+    deleteGroup,
   };
 }

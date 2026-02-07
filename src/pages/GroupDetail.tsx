@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,9 +9,11 @@ import { PayContributionModal } from "@/components/groups/PayContributionModal";
 import { ContributionHistory } from "@/components/groups/ContributionHistory";
 import { JoinRequestsPanel } from "@/components/groups/JoinRequestsPanel";
 import { GroupCreatorBadge } from "@/components/groups/GroupCreatorBadge";
+import { DeleteGroupDialog } from "@/components/groups/DeleteGroupDialog";
 import { useGroupDetail } from "@/hooks/useGroupDetail";
 import { useGroupJoinRequests } from "@/hooks/usePublicGroups";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   Users,
@@ -32,6 +34,8 @@ import { format } from "date-fns";
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const {
     group,
     members,
@@ -41,6 +45,8 @@ export default function GroupDetail() {
     isMember,
     createInvite,
     deleteInvite,
+    removeMember,
+    deleteGroup,
   } = useGroupDetail(id);
 
   const { requests: joinRequests } = useGroupJoinRequests(id);
@@ -93,6 +99,39 @@ export default function GroupDetail() {
 
   const handleDeleteInvite = async (inviteId: string) => {
     await deleteInvite.mutateAsync(inviteId);
+  };
+
+  const handleRemoveMember = async (membershipId: string) => {
+    try {
+      await removeMember.mutateAsync(membershipId);
+      toast({
+        title: "Member removed",
+        description: "The member has been removed from the group.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to remove member",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    try {
+      await deleteGroup.mutateAsync();
+      toast({
+        title: "Group deleted",
+        description: "The group has been permanently deleted.",
+      });
+      navigate("/dashboard/groups");
+    } catch (error: any) {
+      toast({
+        title: "Failed to delete group",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -279,6 +318,9 @@ export default function GroupDetail() {
             members={members}
             creatorId={group.creator_id}
             currentUserId={user?.id}
+            isCreator={isCreator}
+            onRemoveMember={handleRemoveMember}
+            isRemovingMember={removeMember.isPending}
           />
         </div>
 
@@ -309,6 +351,25 @@ export default function GroupDetail() {
           </div>
           <ContributionHistory ajoId={group.id} />
         </div>
+
+        {/* Delete Group - Only visible to creator */}
+        {isCreator && (
+          <div className="bg-card rounded-xl border border-destructive/20 p-6 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-semibold text-foreground mb-1">Danger Zone</h2>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete this group and all its data. This cannot be undone.
+                </p>
+              </div>
+              <DeleteGroupDialog
+                groupName={group.name}
+                onDelete={handleDeleteGroup}
+                isDeleting={deleteGroup.isPending}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
