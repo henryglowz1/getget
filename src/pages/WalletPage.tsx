@@ -15,12 +15,16 @@ import {
   Calendar,
   Download,
   X,
-  Search
+  Search,
+  Smartphone,
+  Users
 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { useWallet, formatNaira } from "@/hooks/useWallet";
 import { FundWalletModal } from "@/components/wallet/FundWalletModal";
 import { WithdrawModal } from "@/components/wallet/WithdrawModal";
+import { SendFundsModal } from "@/components/wallet/SendFundsModal";
+import { BillPaymentModal } from "@/components/wallet/BillPaymentModal";
 import { usePaymentCallback } from "@/hooks/usePaymentCallback";
 import { LinkedBanksManager } from "@/components/wallet/LinkedBanksManager";
 import { AddBankModal } from "@/components/wallet/AddBankModal";
@@ -40,6 +44,8 @@ export default function WalletPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [sendFundsModalOpen, setSendFundsModalOpen] = useState(false);
+  const [billPaymentModalOpen, setBillPaymentModalOpen] = useState(false);
   const [addBankModalOpen, setAddBankModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
@@ -195,6 +201,22 @@ export default function WalletPage() {
               <Button variant="gold" onClick={() => setWithdrawModalOpen(true)}>
                 <Send className="w-4 h-4 mr-2" />
                 Withdraw
+              </Button>
+              <Button 
+                variant="outline" 
+                className="bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => setSendFundsModalOpen(true)}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Send to User
+              </Button>
+              <Button 
+                variant="outline" 
+                className="bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => setBillPaymentModalOpen(true)}
+              >
+                <Smartphone className="w-4 h-4 mr-2" />
+                Pay Bills
               </Button>
               <Button 
                 variant="outline" 
@@ -438,6 +460,8 @@ export default function WalletPage() {
 
       <FundWalletModal open={fundModalOpen} onOpenChange={setFundModalOpen} />
       <WithdrawModal open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen} />
+      <SendFundsModal open={sendFundsModalOpen} onOpenChange={setSendFundsModalOpen} />
+      <BillPaymentModal open={billPaymentModalOpen} onOpenChange={setBillPaymentModalOpen} />
       <AddBankModal open={addBankModalOpen} onOpenChange={setAddBankModalOpen} />
     </DashboardLayout>
   );

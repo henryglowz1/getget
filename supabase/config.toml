@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.check-2fa-status]
 verify_jwt = false
+
+[functions.transfer-to-user]
+verify_jwt = false
+
+[functions.pay-bill]
+verify_jwt = false

@@ -700,6 +700,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_wallet_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: {
+          new_balance: number
+        }[]
+      }
       is_ajo_member: {
         Args: { _ajo_id: string; _user_id: string }
         Returns: boolean
