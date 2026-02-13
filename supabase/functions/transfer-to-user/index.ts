@@ -67,9 +67,6 @@ serve(async (req: Request) => {
       p_user_id: recipient.user_id,
       p_amount: amount,
     });
-      p_user_id: recipient.user_id,
-      p_amount: amount,
-    });
 
     if (incrementError) {
       // Rollback: refund sender
