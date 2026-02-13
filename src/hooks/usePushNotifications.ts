@@ -20,7 +20,7 @@ export function usePushNotifications() {
     // Check current subscription status
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then((registration) => {
-        registration.pushManager.getSubscription().then((subscription) => {
+        (registration as any).pushManager.getSubscription().then((subscription: any) => {
           setIsSubscribed(!!subscription);
         });
       });
@@ -65,7 +65,7 @@ export function usePushNotifications() {
       const registration = await registerServiceWorker();
 
       // Subscribe to push notifications
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await (registration as any).pushManager.subscribe({
         userVisibleOnly: true,
         // Note: In production, you'd use a VAPID public key here
         // applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
@@ -98,7 +98,7 @@ export function usePushNotifications() {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const subscription = await (registration as any).pushManager.getSubscription();
 
       if (subscription) {
         await subscription.unsubscribe();
