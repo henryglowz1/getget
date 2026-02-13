@@ -63,13 +63,10 @@ serve(async (req: Request) => {
     }
 
     // Credit recipient wallet
-    const { error: creditError } = await supabaseAdmin
-      .from('wallets')
-      .update({ balance: undefined }) // placeholder
-      .eq('user_id', recipient.user_id);
-
-    // Actually do an atomic increment
     const { error: incrementError } = await supabaseAdmin.rpc('increment_wallet_balance', {
+      p_user_id: recipient.user_id,
+      p_amount: amount,
+    });
       p_user_id: recipient.user_id,
       p_amount: amount,
     });
